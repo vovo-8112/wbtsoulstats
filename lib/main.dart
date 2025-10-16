@@ -1,20 +1,20 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/foundation.dart';
 import 'package:http/http.dart' as http;
-import 'dart:convert';
 import 'package:intl/intl.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:url_launcher/url_launcher.dart';
-import 'package:shimmer/shimmer.dart';
 import 'web_local_storage.dart' if (dart.library.io) 'noop.dart';
+import "package:shimmer/shimmer.dart";
+import 'services/wbt_price.dart';
+import 'services/soul_service.dart';
+import 'utils/reward_calculator.dart';
 
 void main() {
   runApp(const SoulApp());
 }
 
-/// =========================
-/// Main App
-/// =========================
+
 class SoulApp extends StatelessWidget {
   const SoulApp({super.key});
 
@@ -33,9 +33,6 @@ class SoulApp extends StatelessWidget {
   }
 }
 
-/// =========================
-/// Home Page
-/// =========================
 class SoulHomePage extends StatefulWidget {
   const SoulHomePage({super.key});
 
@@ -58,9 +55,6 @@ class _SoulHomePageState extends State<SoulHomePage> {
     loadSavedSoulId();
   }
 
-  /// =========================
-  /// Date Formatting
-  /// =========================
   String formatDate(String? isoDate) {
     if (isoDate == null) return 'Unknown date';
     try {
@@ -71,9 +65,7 @@ class _SoulHomePageState extends State<SoulHomePage> {
     }
   }
 
-  /// =========================
-  /// Fetch Data
-  /// =========================
+
   Future<void> fetchSoulData(String soulId) async {
     setState(() => loading = true);
     final client = http.Client();
@@ -103,9 +95,6 @@ class _SoulHomePageState extends State<SoulHomePage> {
     }
   }
 
-  /// =========================
-  /// Storage
-  /// =========================
   Future<void> saveSoulId(String soulId) async {
     if (kIsWeb) {
       setItem('saved_soul_id', soulId);
@@ -149,9 +138,6 @@ class _SoulHomePageState extends State<SoulHomePage> {
     }
   }
 
-  /// =========================
-  /// Card Builder
-  /// =========================
   Widget buildCard(String title, String value) {
     double? usdValue;
     if (wbtPrice != null && value.contains('WBT')) {
@@ -185,9 +171,6 @@ class _SoulHomePageState extends State<SoulHomePage> {
     );
   }
 
-  /// =========================
-  /// Build UI
-  /// =========================
   @override
   Widget build(BuildContext context) {
     return GestureDetector(
@@ -282,57 +265,6 @@ class _SoulHomePageState extends State<SoulHomePage> {
         ),
       ),
     );
-  }
-}
-
-/// =========================
-/// Soul Service
-/// =========================
-class SoulService {
-  static const baseUrl = 'https://whitestat.com/api/v1/souls';
-
-  Future<Map<String, dynamic>?> fetchSoul(String soulId, http.Client client) async {
-    final url = '$baseUrl?soulId=$soulId';
-    final response = await client.get(Uri.parse(url));
-
-    if (response.statusCode == 200) {
-      final data = json.decode(response.body);
-      return data['souls']?.first;
-    } else {
-      throw Exception('Error loading soul data: ${response.statusCode}');
-    }
-  }
-}
-
-class WBTPrice {
-  static const baseUrl = "https://whitestat.com/api/v1/prices";
-
-  Future<double?> fetchPrice(http.Client client) async {
-    final response = await client.get(Uri.parse(baseUrl));
-    if (response.statusCode == 200) {
-      final data = json.decode(response.body);
-      return (data['price'] as num).toDouble();
-    } else {
-      throw Exception('Error loading price: ${response.statusCode}');
-    }
-  }
-}
-
-/// =========================
-/// Reward Calculator
-/// =========================
-class RewardCalculator {
-  static double calculateFuture({
-    required double currentAmount,
-    required double rewardPercent,
-    required int months,
-  }) {
-    double monthlyRate = rewardPercent / 100;
-    double future = currentAmount;
-    for (int i = 0; i < months; i++) {
-      future += future * monthlyRate;
-    }
-    return future - currentAmount;
   }
 }
 
