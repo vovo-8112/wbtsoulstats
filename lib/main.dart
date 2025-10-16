@@ -5,6 +5,7 @@ import 'dart:convert';
 import 'package:intl/intl.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:url_launcher/url_launcher.dart';
+import 'package:shimmer/shimmer.dart';
 import 'web_local_storage.dart' if (dart.library.io) 'noop.dart';
 
 void main() {
@@ -75,9 +76,10 @@ class _SoulHomePageState extends State<SoulHomePage> {
   /// =========================
   Future<void> fetchSoulData(String soulId) async {
     setState(() => loading = true);
+    final client = http.Client();
     try {
-      final data = await soulService.fetchSoul(soulId);
-      final price = await priceService.fetchPrice();
+      final data = await soulService.fetchSoul(soulId, client);
+      final price = await priceService.fetchPrice(client);
       setState(() {
         soulData = data;
         wbtPrice = price;
@@ -96,6 +98,8 @@ class _SoulHomePageState extends State<SoulHomePage> {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text('❌ Error loading data: $e')),
       );
+    } finally {
+      client.close();
     }
   }
 
@@ -248,7 +252,11 @@ class _SoulHomePageState extends State<SoulHomePage> {
                 ),
               ),
               if (loading)
-                const Expanded(child: Center(child: CircularProgressIndicator()))
+                const Expanded(
+                  child: Center(
+                    child: ShimmerPlaceholderList(),
+                  ),
+                )
               else if (soulData != null)
                 Expanded(
                   child: ListView(
@@ -283,9 +291,9 @@ class _SoulHomePageState extends State<SoulHomePage> {
 class SoulService {
   static const baseUrl = 'https://whitestat.com/api/v1/souls';
 
-  Future<Map<String, dynamic>?> fetchSoul(String soulId) async {
+  Future<Map<String, dynamic>?> fetchSoul(String soulId, http.Client client) async {
     final url = '$baseUrl?soulId=$soulId';
-    final response = await http.get(Uri.parse(url));
+    final response = await client.get(Uri.parse(url));
 
     if (response.statusCode == 200) {
       final data = json.decode(response.body);
@@ -299,8 +307,8 @@ class SoulService {
 class WBTPrice {
   static const baseUrl = "https://whitestat.com/api/v1/prices";
 
-  Future<double?> fetchPrice() async {
-    final response = await http.get(Uri.parse(baseUrl));
+  Future<double?> fetchPrice(http.Client client) async {
+    final response = await client.get(Uri.parse(baseUrl));
     if (response.statusCode == 200) {
       final data = json.decode(response.body);
       return (data['price'] as num).toDouble();
@@ -325,5 +333,28 @@ class RewardCalculator {
       future += future * monthlyRate;
     }
     return future - currentAmount;
+  }
+}
+
+class ShimmerPlaceholderList extends StatelessWidget {
+  const ShimmerPlaceholderList({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    return Shimmer.fromColors(
+      baseColor: Colors.grey[800]!,
+      highlightColor: Colors.grey[700]!,
+      child: ListView.builder(
+        itemCount: 6,
+        itemBuilder: (context, index) => Card(
+          color: Colors.grey[900],
+          margin: const EdgeInsets.symmetric(vertical: 8, horizontal: 16),
+          child: const ListTile(
+            title: SizedBox(height: 16, width: double.infinity, child: DecoratedBox(decoration: BoxDecoration(color: Colors.grey))),
+            subtitle: SizedBox(height: 14, width: double.infinity, child: DecoratedBox(decoration: BoxDecoration(color: Colors.grey))),
+          ),
+        ),
+      ),
+    );
   }
 }
