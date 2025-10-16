@@ -108,25 +108,22 @@ class _SoulHomePageState extends State<SoulHomePage> {
 
   Future<void> loadSavedSoulId() async {
     if (kIsWeb) {
-      final savedId = getItem('saved_soul_id') ?? "21187";
+      final savedId = getItem('saved_soul_id') ?? "1";
       _controller.text = savedId;
       fetchSoulData(savedId);
       return;
     }
     try {
       final prefs = await SharedPreferences.getInstance();
-      final savedId = prefs.getString('saved_soul_id') ?? "21187";
+      final savedId = prefs.getString('saved_soul_id') ?? "1";
       _controller.text = savedId;
       fetchSoulData(savedId);
     } catch (_) {
-      _controller.text = "21187";
-      fetchSoulData("21187");
+      _controller.text = "1";
+      fetchSoulData("1");
     }
   }
 
-  /// =========================
-  /// Open URL
-  /// =========================
   void openUrl(String url) async {
     final uri = Uri.parse(url);
     if (await canLaunchUrl(uri)) {
