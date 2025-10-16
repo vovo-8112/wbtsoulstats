@@ -47,7 +47,8 @@ class _SoulHomePageState extends State<SoulHomePage> {
   Map<String, dynamic>? soulData;
   Map<String, String>? futureRewards;
   bool loading = false;
-
+  double? wbtPrice;
+  final WBTPrice priceService = WBTPrice();
   final SoulService soulService = SoulService();
 
   @override
@@ -76,8 +77,10 @@ class _SoulHomePageState extends State<SoulHomePage> {
     setState(() => loading = true);
     try {
       final data = await soulService.fetchSoul(soulId);
+      final price = await priceService.fetchPrice();
       setState(() {
         soulData = data;
+        wbtPrice = price;
         final holdAmount = double.tryParse(soulData!['holdAmount'].toString()) ?? 0.0;
         final rewardPercent = double.tryParse(soulData!['rewardPercent'].toString()) ?? 0.0;
 
@@ -146,13 +149,34 @@ class _SoulHomePageState extends State<SoulHomePage> {
   /// Card Builder
   /// =========================
   Widget buildCard(String title, String value) {
+    double? usdValue;
+    if (wbtPrice != null && value.contains('WBT')) {
+      final match = RegExp(r'([\d.]+)').firstMatch(value);
+      if (match != null) {
+        final amount = double.tryParse(match.group(1)!);
+        if (amount != null) usdValue = amount * wbtPrice!;
+      }
+    }
     return Card(
       color: Colors.grey[900],
       elevation: 2,
       margin: const EdgeInsets.symmetric(vertical: 8, horizontal: 16),
       child: ListTile(
         title: Text(title, style: const TextStyle(fontWeight: FontWeight.bold)),
-        subtitle: Text(value),
+        subtitle: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(value),
+            if (usdValue != null)
+              Text(
+                "\$${usdValue.toStringAsFixed(2)}",
+                style: TextStyle(
+                  color: Colors.white.withOpacity(0.6),
+                  fontSize: 13,
+                ),
+              ),
+          ],
+        ),
       ),
     );
   }
@@ -235,6 +259,8 @@ class _SoulHomePageState extends State<SoulHomePage> {
                       buildCard("🎁 Reward Available", "${soulData!['rewardAvailableAmount']} WBT"),
                       buildCard("📊 Reward %", "${soulData!['rewardPercent']}%"),
                       buildCard("📤 Claimed Reward", "${soulData!['rewardClaimedAmount']} WBT"),
+                      if (wbtPrice != null)
+                        buildCard("💵 WBT Price (USDT)", "\$${wbtPrice!.toStringAsFixed(2)}"),
                       if (futureRewards != null) ...futureRewards!.entries.map((entry) =>
                         buildCard("📈 ${entry.key}", entry.value),
                       ),
@@ -266,6 +292,20 @@ class SoulService {
       return data['souls']?.first;
     } else {
       throw Exception('Error loading soul data: ${response.statusCode}');
+    }
+  }
+}
+
+class WBTPrice {
+  static const baseUrl = "https://whitestat.com/api/v1/prices";
+
+  Future<double?> fetchPrice() async {
+    final response = await http.get(Uri.parse(baseUrl));
+    if (response.statusCode == 200) {
+      final data = json.decode(response.body);
+      return (data['price'] as num).toDouble();
+    } else {
+      throw Exception('Error loading price: ${response.statusCode}');
     }
   }
 }
