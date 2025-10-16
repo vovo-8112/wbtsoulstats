@@ -44,7 +44,7 @@ class SoulHomePage extends StatefulWidget {
 }
 
 class _SoulHomePageState extends State<SoulHomePage> {
-  final TextEditingController _controller = TextEditingController(text: "21187");
+  final TextEditingController _controller = TextEditingController(text: "1");
   Map<String, dynamic>? soulData;
   Map<String, String>? futureRewards;
   bool loading = false;
