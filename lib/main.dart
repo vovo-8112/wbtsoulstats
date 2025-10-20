@@ -254,7 +254,7 @@ class _SoulHomePageState extends State<SoulHomePage> {
                         "🎁 Reward Available",
                         "${formatTokens(double.tryParse(soulData!['rewardAvailableAmount'].toString()) ?? 0.0)} WBT"
                       ),
-                      buildCard("📊 Reward %", "${soulData!['rewardPercent']}%"),
+                      buildCard("📊 Reward %", "${formatPercent(soulData!['rewardPercent'])}%"),
                       buildCard(
                         "📤 Claimed Reward",
                         "${formatTokens(double.tryParse(soulData!['rewardClaimedAmount'].toString()) ?? 0.0)} WBT"
@@ -277,6 +277,10 @@ class _SoulHomePageState extends State<SoulHomePage> {
   }
 }
 String formatTokens(double amount) {
+  return amount.toStringAsFixed(2);
+}
+
+String formatPercent(double amount) {
   return amount.toStringAsFixed(2);
 }
 
