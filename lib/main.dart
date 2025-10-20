@@ -79,9 +79,9 @@ class _SoulHomePageState extends State<SoulHomePage> {
         final rewardPercent = double.tryParse(soulData!['rewardPercent'].toString()) ?? 0.0;
 
         futureRewards = {
-          'In 3 months': "${RewardCalculator.calculateFuture(currentAmount: holdAmount, rewardPercent: rewardPercent, months: 3).toStringAsFixed(2)} WBT",
-          'In 6 months': "${RewardCalculator.calculateFuture(currentAmount: holdAmount, rewardPercent: rewardPercent, months: 6).toStringAsFixed(2)} WBT",
-          'In 1 year': "${RewardCalculator.calculateFuture(currentAmount: holdAmount, rewardPercent: rewardPercent, months: 12).toStringAsFixed(2)} WBT",
+          'In 3 months': "${formatTokens(RewardCalculator.calculateFuture(currentAmount: holdAmount, rewardPercent: rewardPercent, months: 3))} WBT",
+          'In 6 months': "${formatTokens(RewardCalculator.calculateFuture(currentAmount: holdAmount, rewardPercent: rewardPercent, months: 6))} WBT",
+          'In 1 year': "${formatTokens(RewardCalculator.calculateFuture(currentAmount: holdAmount, rewardPercent: rewardPercent, months: 12))} WBT",
         };
         loading = false;
       });
@@ -242,11 +242,23 @@ class _SoulHomePageState extends State<SoulHomePage> {
                   child: ListView(
                     children: [
                       buildCard("🕐 Next Reward Date", formatDate(soulData!['nextRewardStartAt'])),
-                      buildCard("⏭️ Next Reward", "${soulData!['nextRewardAmount']} WBT"),
-                      buildCard("💰 Hold Amount", "${soulData!['holdAmount']} WBT"),
-                      buildCard("🎁 Reward Available", "${soulData!['rewardAvailableAmount']} WBT"),
+                      buildCard(
+                        "⏭️ Next Reward",
+                        "${formatTokens(double.tryParse(soulData!['nextRewardAmount'].toString()) ?? 0.0)} WBT"
+                      ),
+                      buildCard(
+                        "💰 Hold Amount",
+                        "${formatTokens(double.tryParse(soulData!['holdAmount'].toString()) ?? 0.0)} WBT"
+                      ),
+                      buildCard(
+                        "🎁 Reward Available",
+                        "${formatTokens(double.tryParse(soulData!['rewardAvailableAmount'].toString()) ?? 0.0)} WBT"
+                      ),
                       buildCard("📊 Reward %", "${soulData!['rewardPercent']}%"),
-                      buildCard("📤 Claimed Reward", "${soulData!['rewardClaimedAmount']} WBT"),
+                      buildCard(
+                        "📤 Claimed Reward",
+                        "${formatTokens(double.tryParse(soulData!['rewardClaimedAmount'].toString()) ?? 0.0)} WBT"
+                      ),
                       if (wbtPrice != null)
                         buildCard("💵 WBT Price (USDT)", "\$${wbtPrice!.toStringAsFixed(2)}"),
                       if (futureRewards != null) ...futureRewards!.entries.map((entry) =>
@@ -263,6 +275,9 @@ class _SoulHomePageState extends State<SoulHomePage> {
       ),
     );
   }
+}
+String formatTokens(double amount) {
+  return amount.toStringAsFixed(2);
 }
 
 class ShimmerPlaceholderList extends StatelessWidget {
