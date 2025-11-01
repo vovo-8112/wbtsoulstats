@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/foundation.dart';
+import 'dart:html' as html;
 import 'package:http/http.dart' as http;
 import 'package:intl/intl.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -52,6 +53,18 @@ class _SoulHomePageState extends State<SoulHomePage> {
   @override
   void initState() {
     super.initState();
+
+    if (kIsWeb) {
+      final uri = Uri.base;
+      final soulIdParam = uri.queryParameters['soulid'];
+      if (soulIdParam != null && soulIdParam.isNotEmpty) {
+        _controller.text = soulIdParam;
+        fetchSoulData(soulIdParam);
+        saveSoulId(soulIdParam);
+        return;
+      }
+    }
+
     loadSavedSoulId();
   }
 
@@ -196,6 +209,10 @@ class _SoulHomePageState extends State<SoulHomePage> {
                         FocusScope.of(context).unfocus();
                         saveSoulId(_controller.text);
                         fetchSoulData(_controller.text);
+                        if (kIsWeb) {
+                          final newUrl = Uri.base.replace(queryParameters: {'soulid': _controller.text});
+                          html.window.history.pushState(null, 'Soul Info', newUrl.toString());
+                        }
                       },
                       child: loading 
                           ? SizedBox(
