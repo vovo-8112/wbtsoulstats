@@ -119,23 +119,33 @@ class _SoulHomePageState extends State<SoulHomePage> {
     } catch (_) {}
   }
 
-  Future<void> loadSavedSoulId() async {
-    if (kIsWeb) {
-      final savedId = getItem('saved_soul_id') ?? "1";
-      _controller.text = savedId;
-      fetchSoulData(savedId);
-      return;
-    }
-    try {
-      final prefs = await SharedPreferences.getInstance();
-      final savedId = prefs.getString('saved_soul_id') ?? "1";
-      _controller.text = savedId;
-      fetchSoulData(savedId);
-    } catch (_) {
-      _controller.text = "1";
-      fetchSoulData("1");
-    }
+ Future<void> loadSavedSoulId() async {
+  if (kIsWeb) {
+    final savedId = getItem('saved_soul_id') ?? "1";
+    _controller.text = savedId;
+    fetchSoulData(savedId);
+
+    // Додай це:
+    final newUrl = Uri.base.replace(queryParameters: {'soulid': savedId});
+    html.window.history.pushState(null, 'Soul Info', newUrl.toString());
+    return;
   }
+
+  try {
+    final prefs = await SharedPreferences.getInstance();
+    final savedId = prefs.getString('saved_soul_id') ?? "1";
+    _controller.text = savedId;
+    fetchSoulData(savedId);
+
+    if (kIsWeb) {
+      final newUrl = Uri.base.replace(queryParameters: {'soulid': savedId});
+      html.window.history.pushState(null, 'Soul Info', newUrl.toString());
+    }
+  } catch (_) {
+    _controller.text = "1";
+    fetchSoulData("1");
+  }
+}
 
   void openUrl(String url) async {
     final uri = Uri.parse(url);
