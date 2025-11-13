@@ -15,7 +15,6 @@ void main() {
   runApp(const SoulApp());
 }
 
-
 class SoulApp extends StatelessWidget {
   const SoulApp({super.key});
 
@@ -78,7 +77,6 @@ class _SoulHomePageState extends State<SoulHomePage> {
     }
   }
 
-
   Future<void> fetchSoulData(String soulId) async {
     setState(() => loading = true);
     final client = http.Client();
@@ -88,21 +86,26 @@ class _SoulHomePageState extends State<SoulHomePage> {
       setState(() {
         soulData = data;
         wbtPrice = price;
-        final holdAmount = double.tryParse(soulData!['holdAmount'].toString()) ?? 0.0;
-        final rewardPercent = double.tryParse(soulData!['rewardPercent'].toString()) ?? 0.0;
+        final holdAmount =
+            double.tryParse(soulData!['holdAmount'].toString()) ?? 0.0;
+        final rewardPercent =
+            double.tryParse(soulData!['rewardPercent'].toString()) ?? 0.0;
 
         futureRewards = {
-          'In 3 months': "${formatTokens(RewardCalculator.calculateFuture(currentAmount: holdAmount, rewardPercent: rewardPercent, months: 3))} WBT",
-          'In 6 months': "${formatTokens(RewardCalculator.calculateFuture(currentAmount: holdAmount, rewardPercent: rewardPercent, months: 6))} WBT",
-          'In 1 year': "${formatTokens(RewardCalculator.calculateFuture(currentAmount: holdAmount, rewardPercent: rewardPercent, months: 12))} WBT",
+          'In 3 months':
+              "${formatTokens(RewardCalculator.calculateFuture(currentAmount: holdAmount, rewardPercent: rewardPercent, months: 3))} WBT",
+          'In 6 months':
+              "${formatTokens(RewardCalculator.calculateFuture(currentAmount: holdAmount, rewardPercent: rewardPercent, months: 6))} WBT",
+          'In 1 year':
+              "${formatTokens(RewardCalculator.calculateFuture(currentAmount: holdAmount, rewardPercent: rewardPercent, months: 12))} WBT",
         };
         loading = false;
       });
     } catch (e) {
       setState(() => loading = false);
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('❌ Error loading data: $e')),
-      );
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text('❌ Error loading data: $e')));
     } finally {
       client.close();
     }
@@ -119,42 +122,42 @@ class _SoulHomePageState extends State<SoulHomePage> {
     } catch (_) {}
   }
 
- Future<void> loadSavedSoulId() async {
-  if (kIsWeb) {
-    final savedId = getItem('saved_soul_id') ?? "1";
-    _controller.text = savedId;
-    fetchSoulData(savedId);
-
-    // Додай це:
-    final newUrl = Uri.base.replace(queryParameters: {'soulid': savedId});
-    html.window.history.pushState(null, 'Soul Info', newUrl.toString());
-    return;
-  }
-
-  try {
-    final prefs = await SharedPreferences.getInstance();
-    final savedId = prefs.getString('saved_soul_id') ?? "1";
-    _controller.text = savedId;
-    fetchSoulData(savedId);
-
+  Future<void> loadSavedSoulId() async {
     if (kIsWeb) {
+      final savedId = getItem('saved_soul_id') ?? "1";
+      _controller.text = savedId;
+      fetchSoulData(savedId);
+
+      // Додай це:
       final newUrl = Uri.base.replace(queryParameters: {'soulid': savedId});
       html.window.history.pushState(null, 'Soul Info', newUrl.toString());
+      return;
     }
-  } catch (_) {
-    _controller.text = "1";
-    fetchSoulData("1");
+
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final savedId = prefs.getString('saved_soul_id') ?? "1";
+      _controller.text = savedId;
+      fetchSoulData(savedId);
+
+      if (kIsWeb) {
+        final newUrl = Uri.base.replace(queryParameters: {'soulid': savedId});
+        html.window.history.pushState(null, 'Soul Info', newUrl.toString());
+      }
+    } catch (_) {
+      _controller.text = "1";
+      fetchSoulData("1");
+    }
   }
-}
 
   void openUrl(String url) async {
     final uri = Uri.parse(url);
     if (await canLaunchUrl(uri)) {
       await launchUrl(uri);
     } else {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('❌ Cannot open $url')),
-      );
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text('❌ Cannot open $url')));
     }
   }
 
@@ -215,20 +218,31 @@ class _SoulHomePageState extends State<SoulHomePage> {
                     ),
                     const SizedBox(height: 10),
                     ElevatedButton(
-                      onPressed: loading ? null : () {
-                        FocusScope.of(context).unfocus();
-                        saveSoulId(_controller.text);
-                        fetchSoulData(_controller.text);
-                        if (kIsWeb) {
-                          final newUrl = Uri.base.replace(queryParameters: {'soulid': _controller.text});
-                          html.window.history.pushState(null, 'Soul Info', newUrl.toString());
-                        }
-                      },
-                      child: loading 
+                      onPressed: loading
+                          ? null
+                          : () {
+                              FocusScope.of(context).unfocus();
+                              saveSoulId(_controller.text);
+                              fetchSoulData(_controller.text);
+                              if (kIsWeb) {
+                                final newUrl = Uri.base.replace(
+                                  queryParameters: {'soulid': _controller.text},
+                                );
+                                html.window.history.pushState(
+                                  null,
+                                  'Soul Info',
+                                  newUrl.toString(),
+                                );
+                              }
+                            },
+                      child: loading
                           ? SizedBox(
                               width: 20,
                               height: 20,
-                              child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2),
+                              child: CircularProgressIndicator(
+                                color: Colors.white,
+                                strokeWidth: 2,
+                              ),
                             )
                           : const Text('Load'),
                     ),
@@ -239,7 +253,9 @@ class _SoulHomePageState extends State<SoulHomePage> {
                           child: ElevatedButton(
                             onPressed: () {
                               final soulId = _controller.text;
-                              openUrl('https://explorer.whitechain.io/soul/$soulId');
+                              openUrl(
+                                'https://explorer.whitechain.io/soul/$soulId',
+                              );
                             },
                             child: const Text('Explorer'),
                           ),
@@ -248,9 +264,62 @@ class _SoulHomePageState extends State<SoulHomePage> {
                         Expanded(
                           child: ElevatedButton(
                             onPressed: () {
-                              openUrl('https://explorer.whitechain.io/address/0x0000000000000000000000000000000000001001/contract/write#claim');
+                              openUrl(
+                                'https://explorer.whitechain.io/address/0x0000000000000000000000000000000000001001/contract/write#claim',
+                              );
                             },
                             child: const Text('Claim'),
+                          ),
+                        ),
+                        const SizedBox(width: 10),
+                        Expanded(
+                          child: ElevatedButton(
+                            onPressed: () {
+                              final title = Uri.encodeComponent(
+                                "Next Soul Reward",
+                              );
+                              final details = Uri.encodeComponent(
+                                "Reward of ${formatTokens(double.tryParse(soulData?['nextRewardAmount']?.toString() ?? '0.0') ?? 0.0)} WBT",
+                              );
+
+                              final startDateTime =
+                                  DateTime.tryParse(
+                                    soulData?['nextRewardStartAt'] ?? '',
+                                  )?.toUtc() ??
+                                  DateTime.now().toUtc();
+                              final endDateTime = startDateTime.add(
+                                const Duration(minutes: 5),
+                              );
+
+                              String formatGoogleDate(DateTime dt) =>
+                                  dt
+                                      .toIso8601String()
+                                      .replaceAll(RegExp(r'[:-]'), '')
+                                      .split('.')
+                                      .first +
+                                  'Z';
+
+                              final url = Uri.parse(
+                                'https://calendar.google.com/calendar/render?action=TEMPLATE'
+                                '&text=$title'
+                                '&details=$details'
+                                '&dates=${formatGoogleDate(startDateTime)}/${formatGoogleDate(endDateTime)}'
+                                '&location=Whitechain',
+                              );
+
+                              html.window.open(url.toString(), '_blank');
+                            },
+                            style: ElevatedButton.styleFrom(
+                              padding: const EdgeInsets.symmetric(vertical: 8),
+                            ),
+                            child: Row(
+                              mainAxisAlignment: MainAxisAlignment.center,
+                              children: const [
+                                Text('Add', style: TextStyle(fontSize: 14)),
+                                SizedBox(width: 4),
+                                Icon(Icons.calendar_today, size: 18),
+                              ],
+                            ),
                           ),
                         ),
                       ],
@@ -259,38 +328,44 @@ class _SoulHomePageState extends State<SoulHomePage> {
                 ),
               ),
               if (loading)
-                const Expanded(
-                  child: Center(
-                    child: ShimmerPlaceholderList(),
-                  ),
-                )
+                const Expanded(child: Center(child: ShimmerPlaceholderList()))
               else if (soulData != null)
                 Expanded(
                   child: ListView(
                     children: [
-                      buildCard("🕐 Next Reward Date", formatDate(soulData!['nextRewardStartAt'])),
+                      buildCard(
+                        "🕐 Next Reward Date",
+                        formatDate(soulData!['nextRewardStartAt']),
+                      ),
                       buildCard(
                         "⏭️ Next Reward",
-                        "${formatTokens(double.tryParse(soulData!['nextRewardAmount'].toString()) ?? 0.0)} WBT"
+                        "${formatTokens(double.tryParse(soulData!['nextRewardAmount'].toString()) ?? 0.0)} WBT",
                       ),
                       buildCard(
                         "💰 Hold Amount",
-                        "${formatTokens(double.tryParse(soulData!['holdAmount'].toString()) ?? 0.0)} WBT"
+                        "${formatTokens(double.tryParse(soulData!['holdAmount'].toString()) ?? 0.0)} WBT",
                       ),
                       buildCard(
                         "🎁 Reward Available",
-                        "${formatTokens(double.tryParse(soulData!['rewardAvailableAmount'].toString()) ?? 0.0)} WBT"
+                        "${formatTokens(double.tryParse(soulData!['rewardAvailableAmount'].toString()) ?? 0.0)} WBT",
                       ),
-                      buildCard("📊 Reward %", "${formatPercent(soulData!['rewardPercent'])}%"),
+                      buildCard(
+                        "📊 Reward %",
+                        "${formatPercent(soulData!['rewardPercent'])}%",
+                      ),
                       buildCard(
                         "📤 Claimed Reward",
-                        "${formatTokens(double.tryParse(soulData!['rewardClaimedAmount'].toString()) ?? 0.0)} WBT"
+                        "${formatTokens(double.tryParse(soulData!['rewardClaimedAmount'].toString()) ?? 0.0)} WBT",
                       ),
                       if (wbtPrice != null)
-                        buildCard("💵 WBT Price (USDT)", "\$${wbtPrice!.toStringAsFixed(2)}"),
-                      if (futureRewards != null) ...futureRewards!.entries.map((entry) =>
-                        buildCard("📈 ${entry.key}", entry.value),
-                      ),
+                        buildCard(
+                          "💵 WBT Price (USDT)",
+                          "\$${wbtPrice!.toStringAsFixed(2)}",
+                        ),
+                      if (futureRewards != null)
+                        ...futureRewards!.entries.map(
+                          (entry) => buildCard("📈 ${entry.key}", entry.value),
+                        ),
                     ],
                   ),
                 )
@@ -303,6 +378,7 @@ class _SoulHomePageState extends State<SoulHomePage> {
     );
   }
 }
+
 String formatTokens(double amount) {
   return amount.toStringAsFixed(2);
 }
@@ -325,8 +401,20 @@ class ShimmerPlaceholderList extends StatelessWidget {
           color: Colors.grey[900],
           margin: const EdgeInsets.symmetric(vertical: 8, horizontal: 16),
           child: const ListTile(
-            title: SizedBox(height: 16, width: double.infinity, child: DecoratedBox(decoration: BoxDecoration(color: Colors.grey))),
-            subtitle: SizedBox(height: 14, width: double.infinity, child: DecoratedBox(decoration: BoxDecoration(color: Colors.grey))),
+            title: SizedBox(
+              height: 16,
+              width: double.infinity,
+              child: DecoratedBox(
+                decoration: BoxDecoration(color: Colors.grey),
+              ),
+            ),
+            subtitle: SizedBox(
+              height: 14,
+              width: double.infinity,
+              child: DecoratedBox(
+                decoration: BoxDecoration(color: Colors.grey),
+              ),
+            ),
           ),
         ),
       ),
