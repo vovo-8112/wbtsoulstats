@@ -226,22 +226,60 @@ class _SoulHomePageState extends State<SoulHomePage> {
         if (amount != null) usdValue = amount * wbtPrice!;
       }
     }
-    return Card(
-      child: Padding(
+
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(16, 8, 16, 12),
+      child: Container(
         padding: const EdgeInsets.all(16),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
+        decoration: BoxDecoration(
+          color: AppColors.bg,
+          borderRadius: BorderRadius.circular(16),
+          border: Border.all(color: AppColors.borderMuted),
+        ),
+        child: Row(
           children: [
-            Text(title, style: Theme.of(context).textTheme.titleMedium),
-            const SizedBox(height: 6),
-            Text(value),
-            if (usdValue != null) ...[
-              const SizedBox(height: 4),
-              Text(
-                "\$${usdValue.toStringAsFixed(2)}",
-                style: Theme.of(context).textTheme.bodySmall,
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    title,
+                    style: const TextStyle(color: AppColors.textMuted, fontSize: 13),
+                  ),
+                  const SizedBox(height: 5),
+                  Text(
+                    value,
+                    style: const TextStyle(
+                      fontSize: 20,
+                      fontWeight: FontWeight.w600,
+                      color: AppColors.text,
+                    ),
+                  ),
+                  if (usdValue != null) ...[
+                    const SizedBox(height: 4),
+                    Text(
+                      "\$${usdValue.toStringAsFixed(2)}",
+                      style: const TextStyle(
+                        fontSize: 13,
+                        color: AppColors.textMuted,
+                      ),
+                    ),
+                  ],
+                ],
               ),
-            ],
+            ),
+            if (usdValue != null)
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                decoration: BoxDecoration(
+                  color: AppColors.bgLight,
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: Text(
+                  "\$${usdValue.toStringAsFixed(2)}",
+                  style: const TextStyle(fontWeight: FontWeight.w600),
+                ),
+              ),
           ],
         ),
       ),
@@ -254,6 +292,34 @@ class _SoulHomePageState extends State<SoulHomePage> {
       onTap: () => FocusScope.of(context).unfocus(),
       behavior: HitTestBehavior.opaque,
       child: Scaffold(
+        appBar: AppBar(
+          backgroundColor: AppColors.bgDark,
+          elevation: 0,
+          title: const Text(
+            'Soul Info',
+            style: TextStyle(fontWeight: FontWeight.w600),
+          ),
+          actions: [
+            if (wbtPrice != null)
+              Padding(
+                padding: const EdgeInsets.only(right: 16),
+                child: Center(
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                    decoration: BoxDecoration(
+                      color: AppColors.bg,
+                      borderRadius: BorderRadius.circular(20),
+                      border: Border.all(color: AppColors.borderMuted),
+                    ),
+                    child: Text(
+                      'WBT \$${wbtPrice!.toStringAsFixed(2)}',
+                      style: const TextStyle(fontSize: 13),
+                    ),
+                  ),
+                ),
+              ),
+          ],
+        ),
         body: SafeArea(
           child: Center(
             child: ConstrainedBox(
@@ -390,6 +456,51 @@ class _SoulHomePageState extends State<SoulHomePage> {
                 Expanded(
                   child: ListView(
                     children: [
+                      Padding(
+                        padding: const EdgeInsets.fromLTRB(16, 8, 16, 12),
+                        child: Container(
+                          padding: const EdgeInsets.all(16),
+                          decoration: BoxDecoration(
+                            color: AppColors.bg,
+                            borderRadius: BorderRadius.circular(16),
+                            border: Border.all(color: AppColors.borderMuted),
+                          ),
+                          child: Row(
+                            children: [
+                              Expanded(
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    const Text(
+                                      '💰 Current Hold',
+                                      style: TextStyle(color: AppColors.textMuted, fontSize: 13),
+                                    ),
+                                    const SizedBox(height: 5),
+                                    Text(
+                                      '${formatTokens(double.tryParse(soulData!['holdAmount'].toString()) ?? 0.0)} WBT',
+                                      style: const TextStyle(
+                                        fontSize: 20,
+                                        fontWeight: FontWeight.w300,
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                              Container(
+                                padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 8),
+                                decoration: BoxDecoration(
+                                  color: AppColors.bgLight,
+                                  borderRadius: BorderRadius.circular(12),
+                                ),
+                                child: Text(
+                                  '${formatPercent(soulData!['rewardPercent'])}%',
+                                  style: const TextStyle(fontWeight: FontWeight.w300),
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ),
                       buildCard(
                         "🕐 Next Reward Date",
                         formatDate(soulData!['nextRewardStartAt']),
@@ -397,10 +508,6 @@ class _SoulHomePageState extends State<SoulHomePage> {
                       buildCard(
                         "⏭️ Next Reward",
                         "${formatTokens(double.tryParse(soulData!['nextRewardAmount'].toString()) ?? 0.0)} WBT",
-                      ),
-                      buildCard(
-                        "💰 Hold Amount",
-                        "${formatTokens(double.tryParse(soulData!['holdAmount'].toString()) ?? 0.0)} WBT",
                       ),
                       buildCard(
                         "🎁 Reward Available",
@@ -414,11 +521,6 @@ class _SoulHomePageState extends State<SoulHomePage> {
                         "📤 Claimed Reward",
                         "${formatTokens(double.tryParse(soulData!['rewardClaimedAmount'].toString()) ?? 0.0)} WBT",
                       ),
-                      if (wbtPrice != null)
-                        buildCard(
-                          "💵 WBT Price (USDT)",
-                          "\$${wbtPrice!.toStringAsFixed(2)}",
-                        ),
                       if (futureRewards != null)
                         ...futureRewards!.entries.map(
                           (entry) => buildCard("📈 ${entry.key}", entry.value),
@@ -457,21 +559,45 @@ class ShimmerPlaceholderList extends StatelessWidget {
       child: ListView.builder(
         itemCount: 6,
         itemBuilder: (context, index) => Card(
-          margin: const EdgeInsets.symmetric(vertical: 8, horizontal: 16),
-          child: const ListTile(
-            title: SizedBox(
-              height: 16,
-              width: double.infinity,
-              child: DecoratedBox(
-                decoration: BoxDecoration(color: Colors.grey),
-              ),
-            ),
-            subtitle: SizedBox(
-              height: 14,
-              width: double.infinity,
-              child: DecoratedBox(
-                decoration: BoxDecoration(color: Colors.grey),
-              ),
+          child: Padding(
+            padding: const EdgeInsets.all(16),
+            child: Row(
+              crossAxisAlignment: CrossAxisAlignment.center,
+              children: [
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Container(
+                        height: 13,
+                        width: 100,
+                        decoration: BoxDecoration(
+                          color: AppColors.borderMuted,
+                          borderRadius: BorderRadius.circular(4),
+                        ),
+                      ),
+                      const SizedBox(height: 6),
+                      Container(
+                        height: 20,
+                        width: 80,
+                        decoration: BoxDecoration(
+                          color: AppColors.border,
+                          borderRadius: BorderRadius.circular(4),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                Container(
+                  height: 28,
+                  width: 40,
+                  decoration: BoxDecoration(
+                    color: AppColors.bgLight,
+                    borderRadius: BorderRadius.circular(10),
+                    border: Border.all(color: AppColors.borderMuted),
+                  ),
+                ),
+              ],
             ),
           ),
         ),
