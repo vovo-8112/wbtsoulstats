@@ -11,6 +11,7 @@ import "package:shimmer/shimmer.dart";
 import 'services/wbt_price.dart';
 import 'services/soul_service.dart';
 import 'utils/reward_calculator.dart';
+import 'dart:async';
 
 void main() {
   runApp(const SoulApp());
@@ -40,7 +41,10 @@ class SoulApp extends StatelessWidget {
       textTheme: const TextTheme(
         bodyMedium: TextStyle(color: AppColors.text),
         bodySmall: TextStyle(color: AppColors.textMuted),
-        titleMedium: TextStyle(color: AppColors.text, fontWeight: FontWeight.w600),
+        titleMedium: TextStyle(
+          color: AppColors.text,
+          fontWeight: FontWeight.w600,
+        ),
       ),
       inputDecorationTheme: InputDecorationTheme(
         filled: true,
@@ -104,6 +108,8 @@ class _SoulHomePageState extends State<SoulHomePage> {
   double? wbtPrice;
   final WBTPrice priceService = WBTPrice();
   final SoulService soulService = SoulService();
+  Timer? _countdownTimer;
+  Duration? _timeLeft;
 
   @override
   void initState() {
@@ -133,20 +139,43 @@ class _SoulHomePageState extends State<SoulHomePage> {
     }
   }
 
+  void startCountdown(String? isoDate) {
+    _countdownTimer?.cancel();
+    if (isoDate == null) return;
+
+    final target = DateTime.tryParse(isoDate)?.toUtc();
+    if (target == null) return;
+
+    void tick() {
+      final now = DateTime.now().toUtc();
+      final diff = target.difference(now);
+
+      if (diff.isNegative) {
+        _countdownTimer?.cancel();
+        setState(() => _timeLeft = Duration.zero);
+      } else {
+        setState(() => _timeLeft = diff);
+      }
+    }
+
+    tick();
+    _countdownTimer = Timer.periodic(const Duration(seconds: 1), (_) => tick());
+  }
+
   Future<void> fetchSoulData(String soulId) async {
     setState(() => loading = true);
     final client = http.Client();
     try {
       final data = await soulService.fetchSoul(soulId, client);
       final price = await priceService.fetchPrice(client);
+      soulData = data;
+      wbtPrice = price;
+      startCountdown(soulData!['nextRewardStartAt']);
       setState(() {
-        soulData = data;
-        wbtPrice = price;
         final holdAmount =
             double.tryParse(soulData!['holdAmount'].toString()) ?? 0.0;
         final rewardPercent =
             double.tryParse(soulData!['rewardPercent'].toString()) ?? 0.0;
-
         futureRewards = {
           'In 3 months':
               "${formatTokens(RewardCalculator.calculateFuture(currentAmount: holdAmount, rewardPercent: rewardPercent, months: 3))} WBT",
@@ -165,6 +194,11 @@ class _SoulHomePageState extends State<SoulHomePage> {
     } finally {
       client.close();
     }
+  }
+  @override
+  void dispose() {
+    _countdownTimer?.cancel();
+    super.dispose();
   }
 
   Future<void> saveSoulId(String soulId) async {
@@ -244,7 +278,10 @@ class _SoulHomePageState extends State<SoulHomePage> {
                 children: [
                   Text(
                     title,
-                    style: const TextStyle(color: AppColors.textMuted, fontSize: 13),
+                    style: const TextStyle(
+                      color: AppColors.textMuted,
+                      fontSize: 13,
+                    ),
                   ),
                   const SizedBox(height: 5),
                   Text(
@@ -270,7 +307,10 @@ class _SoulHomePageState extends State<SoulHomePage> {
             ),
             if (usdValue != null)
               Container(
-                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 12,
+                  vertical: 8,
+                ),
                 decoration: BoxDecoration(
                   color: AppColors.bgLight,
                   borderRadius: BorderRadius.circular(12),
@@ -305,7 +345,10 @@ class _SoulHomePageState extends State<SoulHomePage> {
                 padding: const EdgeInsets.only(right: 16),
                 child: Center(
                   child: Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 10,
+                      vertical: 6,
+                    ),
                     decoration: BoxDecoration(
                       color: AppColors.bg,
                       borderRadius: BorderRadius.circular(20),
@@ -326,210 +369,300 @@ class _SoulHomePageState extends State<SoulHomePage> {
               constraints: const BoxConstraints(maxWidth: 1100),
               child: Column(
                 children: [
-              Padding(
-                padding: const EdgeInsets.all(16),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.stretch,
-                  children: [
-                    TextField(
-                      controller: _controller,
-                      keyboardType: TextInputType.number,
-                      decoration: const InputDecoration(
-                        labelText: 'Soul ID',
-                        border: OutlineInputBorder(),
-                      ),
-                    ),
-                    const SizedBox(height: 10),
-                    ElevatedButton(
-                      onPressed: loading
-                          ? null
-                          : () {
-                              FocusScope.of(context).unfocus();
-                              saveSoulId(_controller.text);
-                              fetchSoulData(_controller.text);
-                              if (kIsWeb) {
-                                final newUrl = Uri.base.replace(
-                                  queryParameters: {'soulid': _controller.text},
-                                );
-                                html.window.history.pushState(
-                                  null,
-                                  'Soul Info',
-                                  newUrl.toString(),
-                                );
-                              }
-                            },
-                      child: loading
-                          ? SizedBox(
-                              width: 20,
-                              height: 20,
-                              child: CircularProgressIndicator(
-                                color: Colors.white,
-                                strokeWidth: 2,
-                              ),
-                            )
-                          : const Text('Load'),
-                    ),
-                    const SizedBox(height: 10),
-                    Row(
+                  Padding(
+                    padding: const EdgeInsets.all(16),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.stretch,
                       children: [
-                        Expanded(
-                          child: ElevatedButton(
-                            onPressed: () {
-                              final soulId = _controller.text;
-                              openUrl(
-                                'https://explorer.whitechain.io/soul/$soulId',
-                              );
-                            },
-                            child: const Text('Explorer'),
+                        TextField(
+                          controller: _controller,
+                          keyboardType: TextInputType.number,
+                          decoration: const InputDecoration(
+                            labelText: 'Soul ID',
+                            border: OutlineInputBorder(),
                           ),
                         ),
-                        const SizedBox(width: 10),
-                        Expanded(
-                          child: ElevatedButton(
-                            onPressed: () {
-                              openUrl(
-                                'https://explorer.whitechain.io/address/0x0000000000000000000000000000000000001001/contract/write#claim',
-                              );
-                            },
-                            child: const Text('Claim'),
-                          ),
+                        const SizedBox(height: 10),
+                        ElevatedButton(
+                          onPressed: loading
+                              ? null
+                              : () {
+                                  FocusScope.of(context).unfocus();
+                                  saveSoulId(_controller.text);
+                                  fetchSoulData(_controller.text);
+                                  if (kIsWeb) {
+                                    final newUrl = Uri.base.replace(
+                                      queryParameters: {
+                                        'soulid': _controller.text,
+                                      },
+                                    );
+                                    html.window.history.pushState(
+                                      null,
+                                      'Soul Info',
+                                      newUrl.toString(),
+                                    );
+                                  }
+                                },
+                          child: loading
+                              ? SizedBox(
+                                  width: 20,
+                                  height: 20,
+                                  child: CircularProgressIndicator(
+                                    color: Colors.white,
+                                    strokeWidth: 2,
+                                  ),
+                                )
+                              : const Text('Load'),
                         ),
-                        const SizedBox(width: 10),
-                        Expanded(
-                          child: ElevatedButton(
-                            onPressed: () {
-                              final title = Uri.encodeComponent(
-                                "Next Soul Reward",
-                              );
-                              final details = Uri.encodeComponent(
-                                "Reward of ${formatTokens(double.tryParse(soulData?['nextRewardAmount']?.toString() ?? '0.0') ?? 0.0)} WBT",
-                              );
-
-                              final startDateTime =
-                                  DateTime.tryParse(
-                                    soulData?['nextRewardStartAt'] ?? '',
-                                  )?.toUtc() ??
-                                  DateTime.now().toUtc();
-                              final endDateTime = startDateTime.add(
-                                const Duration(minutes: 5),
-                              );
-
-                              String formatGoogleDate(DateTime dt) =>
-                                  dt
-                                      .toIso8601String()
-                                      .replaceAll(RegExp(r'[:-]'), '')
-                                      .split('.')
-                                      .first +
-                                  'Z';
-
-                              final url = Uri.parse(
-                                'https://calendar.google.com/calendar/render?action=TEMPLATE'
-                                '&text=$title'
-                                '&details=$details'
-                                '&dates=${formatGoogleDate(startDateTime)}/${formatGoogleDate(endDateTime)}'
-                                '&location=Whitechain',
-                              );
-
-                              html.window.open(url.toString(), '_blank');
-                            },
-                            style: ElevatedButton.styleFrom(
-                              padding: const EdgeInsets.symmetric(vertical: 8),
+                        const SizedBox(height: 10),
+                        Row(
+                          children: [
+                            Expanded(
+                              child: ElevatedButton(
+                                onPressed: () {
+                                  final soulId = _controller.text;
+                                  openUrl(
+                                    'https://explorer.whitechain.io/soul/$soulId',
+                                  );
+                                },
+                                child: const Text('Explorer'),
+                              ),
                             ),
-                            child: Row(
-                              mainAxisAlignment: MainAxisAlignment.center,
-                              children: const [
-                                Text('Add', style: TextStyle(fontSize: 14)),
-                                SizedBox(width: 4),
-                                Icon(Icons.calendar_today, size: 18),
-                              ],
+                            const SizedBox(width: 10),
+                            Expanded(
+                              child: ElevatedButton(
+                                onPressed: () {
+                                  openUrl(
+                                    'https://explorer.whitechain.io/address/0x0000000000000000000000000000000000001001/contract/write#claim',
+                                  );
+                                },
+                                child: const Text('Claim'),
+                              ),
                             ),
-                          ),
-                        ),
-                      ],
-                    ),
-                  ],
-                ),
-              ),
-              if (loading)
-                const Expanded(child: Center(child: ShimmerPlaceholderList()))
-              else if (soulData != null)
-                Expanded(
-                  child: ListView(
-                    children: [
-                      Padding(
-                        padding: const EdgeInsets.fromLTRB(16, 8, 16, 12),
-                        child: Container(
-                          padding: const EdgeInsets.all(16),
-                          decoration: BoxDecoration(
-                            color: AppColors.bg,
-                            borderRadius: BorderRadius.circular(16),
-                            border: Border.all(color: AppColors.borderMuted),
-                          ),
-                          child: Row(
-                            children: [
-                              Expanded(
-                                child: Column(
-                                  crossAxisAlignment: CrossAxisAlignment.start,
-                                  children: [
-                                    const Text(
-                                      '💰 Current Hold',
-                                      style: TextStyle(color: AppColors.textMuted, fontSize: 13),
-                                    ),
-                                    const SizedBox(height: 5),
-                                    Text(
-                                      '${formatTokens(double.tryParse(soulData!['holdAmount'].toString()) ?? 0.0)} WBT',
-                                      style: const TextStyle(
-                                        fontSize: 20,
-                                        fontWeight: FontWeight.w300,
-                                      ),
-                                    ),
+                            const SizedBox(width: 10),
+                            Expanded(
+                              child: ElevatedButton(
+                                onPressed: () {
+                                  final title = Uri.encodeComponent(
+                                    "Next Soul Reward",
+                                  );
+                                  final details = Uri.encodeComponent(
+                                    "Reward of ${formatTokens(double.tryParse(soulData?['nextRewardAmount']?.toString() ?? '0.0') ?? 0.0)} WBT",
+                                  );
+
+                                  final startDateTime =
+                                      DateTime.tryParse(
+                                        soulData?['nextRewardStartAt'] ?? '',
+                                      )?.toUtc() ??
+                                      DateTime.now().toUtc();
+                                  final endDateTime = startDateTime.add(
+                                    const Duration(minutes: 5),
+                                  );
+
+                                  String formatGoogleDate(DateTime dt) =>
+                                      dt
+                                          .toIso8601String()
+                                          .replaceAll(RegExp(r'[:-]'), '')
+                                          .split('.')
+                                          .first +
+                                      'Z';
+
+                                  final url = Uri.parse(
+                                    'https://calendar.google.com/calendar/render?action=TEMPLATE'
+                                    '&text=$title'
+                                    '&details=$details'
+                                    '&dates=${formatGoogleDate(startDateTime)}/${formatGoogleDate(endDateTime)}'
+                                    '&location=Whitechain',
+                                  );
+
+                                  html.window.open(url.toString(), '_blank');
+                                },
+                                style: ElevatedButton.styleFrom(
+                                  padding: const EdgeInsets.symmetric(
+                                    vertical: 8,
+                                  ),
+                                ),
+                                child: Row(
+                                  mainAxisAlignment: MainAxisAlignment.center,
+                                  children: const [
+                                    Text('Add', style: TextStyle(fontSize: 14)),
+                                    SizedBox(width: 4),
+                                    Icon(Icons.calendar_today, size: 18),
                                   ],
                                 ),
                               ),
-                              Container(
-                                padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 8),
-                                decoration: BoxDecoration(
-                                  color: AppColors.bgLight,
-                                  borderRadius: BorderRadius.circular(12),
-                                ),
-                                child: Text(
-                                  '${formatPercent(soulData!['rewardPercent'])}%',
-                                  style: const TextStyle(fontWeight: FontWeight.w300),
+                            ),
+                          ],
+                        ),
+                      ],
+                    ),
+                  ),
+                  if (loading)
+                    const Expanded(
+                      child: Center(child: ShimmerPlaceholderList()),
+                    )
+                  else if (soulData != null)
+                    Expanded(
+                      child: ListView(
+                        children: [
+                          Padding(
+                            padding: const EdgeInsets.fromLTRB(16, 8, 16, 12),
+                            child: Container(
+                              padding: const EdgeInsets.all(16),
+                              decoration: BoxDecoration(
+                                color: AppColors.bg,
+                                borderRadius: BorderRadius.circular(16),
+                                border: Border.all(
+                                  color: AppColors.borderMuted,
                                 ),
                               ),
-                            ],
+                              child: Row(
+                                children: [
+                                  Expanded(
+                                    child: Column(
+                                      crossAxisAlignment:
+                                          CrossAxisAlignment.start,
+                                      children: [
+                                        const Text(
+                                          '💰 Current Hold',
+                                          style: TextStyle(
+                                            color: AppColors.textMuted,
+                                            fontSize: 13,
+                                          ),
+                                        ),
+                                        const SizedBox(height: 5),
+                                        Text(
+                                          '${formatTokens(double.tryParse(soulData!['holdAmount'].toString()) ?? 0.0)} WBT',
+                                          style: const TextStyle(
+                                            fontSize: 20,
+                                            fontWeight: FontWeight.w300,
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                                  ),
+                                  Container(
+                                    padding: const EdgeInsets.symmetric(
+                                      horizontal: 4,
+                                      vertical: 8,
+                                    ),
+                                    decoration: BoxDecoration(
+                                      color: AppColors.bgLight,
+                                      borderRadius: BorderRadius.circular(12),
+                                    ),
+                                    child: Text(
+                                      '${formatPercent(soulData!['rewardPercent'])}%',
+                                      style: const TextStyle(
+                                        fontWeight: FontWeight.w300,
+                                      ),
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
                           ),
-                        ),
+                          Padding(
+                            padding: const EdgeInsets.fromLTRB(16, 8, 16, 12),
+                            child: Container(
+                              padding: const EdgeInsets.all(16),
+                              decoration: BoxDecoration(
+                                color: AppColors.bg,
+                                borderRadius: BorderRadius.circular(16),
+                                border: Border.all(color: AppColors.borderMuted),
+                              ),
+                              child: Row(
+                                children: [
+                                  Expanded(
+                                    child: Column(
+                                      crossAxisAlignment: CrossAxisAlignment.start,
+                                      children: [
+                                        const Text(
+                                          "⏭️ Next Reward",
+                                          style: TextStyle(
+                                            color: AppColors.textMuted,
+                                            fontSize: 13,
+                                          ),
+                                        ),
+                                        const SizedBox(height: 8),
+                                        Text(
+                                          "${formatTokens(double.tryParse(soulData!['nextRewardAmount'].toString()) ?? 0.0)} WBT",
+                                          style: const TextStyle(
+                                            fontSize: 22,
+                                            fontWeight: FontWeight.w600,
+                                            color: AppColors.text,
+                                          ),
+                                        ),
+                                        if (wbtPrice != null) ...[
+                                          const SizedBox(height: 4),
+                                          Text(
+                                            "\$${((double.tryParse(soulData!['nextRewardAmount'].toString()) ?? 0.0) * wbtPrice!).toStringAsFixed(2)}",
+                                            style: const TextStyle(
+                                              fontSize: 13,
+                                              color: AppColors.textMuted,
+                                            ),
+                                          ),
+                                        ],
+                                      ],
+                                    ),
+                                  ),
+                                  Column(
+                                    crossAxisAlignment: CrossAxisAlignment.end,
+                                    children: [
+                                      Row(
+                                        children: [
+                                          const Icon(Icons.timer, size: 18, color: AppColors.textMuted),
+                                          const SizedBox(width: 6),
+                                          Text(
+                                            formatDuration(_timeLeft),
+                                            style: const TextStyle(
+                                              fontSize: 16,
+                                              fontWeight: FontWeight.w500,
+                                            ),
+                                          ),
+                                        ],
+                                      ),
+                                      const SizedBox(height: 6),
+                                      Row(
+                                        children: [
+                                          const Icon(Icons.calendar_today, size: 16, color: AppColors.textMuted),
+                                          const SizedBox(width: 6),
+                                          Text(
+                                            formatDate(soulData!['nextRewardStartAt']),
+                                            style: const TextStyle(
+                                              fontSize: 14,
+                                              color: AppColors.textMuted,
+                                            ),
+                                          ),
+                                        ],
+                                      ),
+                                    ],
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ),
+                          buildCard(
+                            "🎁 Reward Available",
+                            "${formatTokens(double.tryParse(soulData!['rewardAvailableAmount'].toString()) ?? 0.0)} WBT",
+                          ),
+                          buildCard(
+                            "📊 Reward %",
+                            "${formatPercent(soulData!['rewardPercent'])}%",
+                          ),
+                          buildCard(
+                            "📤 Claimed Reward",
+                            "${formatTokens(double.tryParse(soulData!['rewardClaimedAmount'].toString()) ?? 0.0)} WBT",
+                          ),
+                          if (futureRewards != null)
+                            ...futureRewards!.entries.map(
+                              (entry) =>
+                                  buildCard("📈 ${entry.key}", entry.value),
+                            ),
+                        ],
                       ),
-                      buildCard(
-                        "🕐 Next Reward Date",
-                        formatDate(soulData!['nextRewardStartAt']),
-                      ),
-                      buildCard(
-                        "⏭️ Next Reward",
-                        "${formatTokens(double.tryParse(soulData!['nextRewardAmount'].toString()) ?? 0.0)} WBT",
-                      ),
-                      buildCard(
-                        "🎁 Reward Available",
-                        "${formatTokens(double.tryParse(soulData!['rewardAvailableAmount'].toString()) ?? 0.0)} WBT",
-                      ),
-                      buildCard(
-                        "📊 Reward %",
-                        "${formatPercent(soulData!['rewardPercent'])}%",
-                      ),
-                      buildCard(
-                        "📤 Claimed Reward",
-                        "${formatTokens(double.tryParse(soulData!['rewardClaimedAmount'].toString()) ?? 0.0)} WBT",
-                      ),
-                      if (futureRewards != null)
-                        ...futureRewards!.entries.map(
-                          (entry) => buildCard("📈 ${entry.key}", entry.value),
-                        ),
-                    ],
-                  ),
-                )
-              else
-                const Expanded(child: Center(child: Text('No data found'))),
+                    )
+                  else
+                    const Expanded(child: Center(child: Text('No data found'))),
                 ],
               ),
             ),
@@ -546,6 +679,26 @@ String formatTokens(double amount) {
 
 String formatPercent(double amount) {
   return amount.toStringAsFixed(2);
+}
+
+String formatDuration(Duration? d) {
+  if (d == null) return '--:--:--';
+
+  final days = d.inDays;
+  final hours = d.inHours % 24;
+  final minutes = d.inMinutes % 60;
+  final seconds = d.inSeconds % 60;
+
+  if (days > 0) {
+    return '${days}d '
+        '${hours.toString().padLeft(2, '0')}:'
+        '${minutes.toString().padLeft(2, '0')}:'
+        '${seconds.toString().padLeft(2, '0')}';
+  }
+
+  return '${hours.toString().padLeft(2, '0')}:'
+      '${minutes.toString().padLeft(2, '0')}:'
+      '${seconds.toString().padLeft(2, '0')}';
 }
 
 class ShimmerPlaceholderList extends StatelessWidget {
