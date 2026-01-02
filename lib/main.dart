@@ -195,6 +195,7 @@ class _SoulHomePageState extends State<SoulHomePage> {
       client.close();
     }
   }
+
   @override
   void dispose() {
     _countdownTimer?.cancel();
@@ -531,12 +532,43 @@ class _SoulHomePageState extends State<SoulHomePage> {
                                           ),
                                         ),
                                         const SizedBox(height: 5),
-                                        Text(
-                                          '${formatTokens(double.tryParse(soulData!['holdAmount'].toString()) ?? 0.0)} WBT',
-                                          style: const TextStyle(
-                                            fontSize: 20,
-                                            fontWeight: FontWeight.w300,
-                                          ),
+                                        Builder(
+                                          builder: (context) {
+                                            final holdAmount =
+                                                double.tryParse(
+                                                  soulData!['holdAmount']
+                                                      .toString(),
+                                                ) ??
+                                                0.0;
+                                            final holdUsd = wbtPrice != null
+                                                ? holdAmount * wbtPrice!
+                                                : null;
+
+                                            return Column(
+                                              crossAxisAlignment:
+                                                  CrossAxisAlignment.start,
+                                              children: [
+                                                Text(
+                                                  '${formatTokens(holdAmount)} WBT',
+                                                  style: const TextStyle(
+                                                    fontSize: 20,
+                                                    fontWeight: FontWeight.w600,
+                                                  ),
+                                                ),
+                                                if (holdUsd != null) ...[
+                                                  const SizedBox(height: 4),
+                                                  Text(
+                                                    '\$${holdUsd.toStringAsFixed(2)}',
+                                                    style: const TextStyle(
+                                                      fontSize: 13,
+                                                      color:
+                                                          AppColors.textMuted,
+                                                    ),
+                                                  ),
+                                                ],
+                                              ],
+                                            );
+                                          },
                                         ),
                                       ],
                                     ),
@@ -568,13 +600,16 @@ class _SoulHomePageState extends State<SoulHomePage> {
                               decoration: BoxDecoration(
                                 color: AppColors.bg,
                                 borderRadius: BorderRadius.circular(16),
-                                border: Border.all(color: AppColors.borderMuted),
+                                border: Border.all(
+                                  color: AppColors.borderMuted,
+                                ),
                               ),
                               child: Row(
                                 children: [
                                   Expanded(
                                     child: Column(
-                                      crossAxisAlignment: CrossAxisAlignment.start,
+                                      crossAxisAlignment:
+                                          CrossAxisAlignment.start,
                                       children: [
                                         const Text(
                                           "⏭️ Next Reward",
@@ -610,7 +645,11 @@ class _SoulHomePageState extends State<SoulHomePage> {
                                     children: [
                                       Row(
                                         children: [
-                                          const Icon(Icons.timer, size: 18, color: AppColors.textMuted),
+                                          const Icon(
+                                            Icons.timer,
+                                            size: 18,
+                                            color: AppColors.textMuted,
+                                          ),
                                           const SizedBox(width: 6),
                                           Text(
                                             formatDuration(_timeLeft),
@@ -624,10 +663,16 @@ class _SoulHomePageState extends State<SoulHomePage> {
                                       const SizedBox(height: 6),
                                       Row(
                                         children: [
-                                          const Icon(Icons.calendar_today, size: 16, color: AppColors.textMuted),
+                                          const Icon(
+                                            Icons.calendar_today,
+                                            size: 16,
+                                            color: AppColors.textMuted,
+                                          ),
                                           const SizedBox(width: 6),
                                           Text(
-                                            formatDate(soulData!['nextRewardStartAt']),
+                                            formatDate(
+                                              soulData!['nextRewardStartAt'],
+                                            ),
                                             style: const TextStyle(
                                               fontSize: 14,
                                               color: AppColors.textMuted,
@@ -644,10 +689,6 @@ class _SoulHomePageState extends State<SoulHomePage> {
                           buildCard(
                             "🎁 Reward Available",
                             "${formatTokens(double.tryParse(soulData!['rewardAvailableAmount'].toString()) ?? 0.0)} WBT",
-                          ),
-                          buildCard(
-                            "📊 Reward %",
-                            "${formatPercent(soulData!['rewardPercent'])}%",
                           ),
                           buildCard(
                             "📤 Claimed Reward",
