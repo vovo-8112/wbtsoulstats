@@ -506,199 +506,243 @@ class _SoulHomePageState extends State<SoulHomePage> {
                     Expanded(
                       child: ListView(
                         children: [
-                          Padding(
-                            padding: const EdgeInsets.fromLTRB(16, 8, 16, 12),
-                            child: Container(
-                              padding: const EdgeInsets.all(16),
-                              decoration: BoxDecoration(
-                                color: AppColors.bg,
-                                borderRadius: BorderRadius.circular(16),
-                                border: Border.all(
-                                  color: AppColors.borderMuted,
-                                ),
-                              ),
-                              child: Row(
-                                children: [
-                                  Expanded(
-                                    child: Column(
-                                      crossAxisAlignment:
-                                          CrossAxisAlignment.start,
-                                      children: [
-                                        const Text(
-                                          '💰 Current Hold',
-                                          style: TextStyle(
-                                            color: AppColors.textMuted,
-                                            fontSize: 13,
-                                          ),
-                                        ),
-                                        const SizedBox(height: 5),
-                                        Builder(
-                                          builder: (context) {
-                                            final holdAmount =
-                                                double.tryParse(
-                                                  soulData!['holdAmount']
-                                                      .toString(),
-                                                ) ??
-                                                0.0;
-                                            final holdUsd = wbtPrice != null
-                                                ? holdAmount * wbtPrice!
-                                                : null;
+                          SoulCard(
+                            title: '💰 Current Hold',
+                            content: Builder(
+                              builder: (context) {
+                                final holdAmount =
+                                    double.tryParse(
+                                      soulData!['holdAmount'].toString(),
+                                    ) ??
+                                    0.0;
+                                final holdUsd = wbtPrice != null
+                                    ? holdAmount * wbtPrice!
+                                    : null;
 
-                                            return Column(
-                                              crossAxisAlignment:
-                                                  CrossAxisAlignment.start,
-                                              children: [
-                                                Text(
-                                                  '${formatTokens(holdAmount)} WBT',
-                                                  style: const TextStyle(
-                                                    fontSize: 20,
-                                                    fontWeight: FontWeight.w600,
-                                                  ),
-                                                ),
-                                                if (holdUsd != null) ...[
-                                                  const SizedBox(height: 4),
-                                                  Text(
-                                                    '\$${holdUsd.toStringAsFixed(2)}',
-                                                    style: const TextStyle(
-                                                      fontSize: 13,
-                                                      color:
-                                                          AppColors.textMuted,
-                                                    ),
-                                                  ),
-                                                ],
-                                              ],
-                                            );
-                                          },
-                                        ),
-                                      ],
-                                    ),
-                                  ),
-                                  Container(
-                                    padding: const EdgeInsets.symmetric(
-                                      horizontal: 4,
-                                      vertical: 8,
-                                    ),
-                                    decoration: BoxDecoration(
-                                      color: AppColors.bgLight,
-                                      borderRadius: BorderRadius.circular(12),
-                                    ),
-                                    child: Text(
-                                      '${formatPercent(soulData!['rewardPercent'])}%',
+                                return Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    Text(
+                                      '${formatTokens(holdAmount)} WBT',
                                       style: const TextStyle(
-                                        fontWeight: FontWeight.w300,
+                                        fontSize: 20,
+                                        fontWeight: FontWeight.w600,
                                       ),
                                     ),
-                                  ),
-                                ],
-                              ),
-                            ),
-                          ),
-                          Padding(
-                            padding: const EdgeInsets.fromLTRB(16, 8, 16, 12),
-                            child: Container(
-                              padding: const EdgeInsets.all(16),
-                              decoration: BoxDecoration(
-                                color: AppColors.bg,
-                                borderRadius: BorderRadius.circular(16),
-                                border: Border.all(
-                                  color: AppColors.borderMuted,
-                                ),
-                              ),
-                              child: Row(
-                                children: [
-                                  Expanded(
-                                    child: Column(
-                                      crossAxisAlignment:
-                                          CrossAxisAlignment.start,
-                                      children: [
-                                        const Text(
-                                          "⏭️ Next Reward",
-                                          style: TextStyle(
-                                            color: AppColors.textMuted,
-                                            fontSize: 13,
-                                          ),
+                                    if (holdUsd != null) ...[
+                                      const SizedBox(height: 4),
+                                      Text(
+                                        '\$${holdUsd.toStringAsFixed(2)}',
+                                        style: const TextStyle(
+                                          fontSize: 13,
+                                          color: AppColors.textMuted,
                                         ),
-                                        const SizedBox(height: 8),
-                                        Text(
-                                          "${formatTokens(double.tryParse(soulData!['nextRewardAmount'].toString()) ?? 0.0)} WBT",
-                                          style: const TextStyle(
-                                            fontSize: 22,
-                                            fontWeight: FontWeight.w600,
-                                            color: AppColors.text,
-                                          ),
-                                        ),
-                                        if (wbtPrice != null) ...[
-                                          const SizedBox(height: 4),
-                                          Text(
-                                            "\$${((double.tryParse(soulData!['nextRewardAmount'].toString()) ?? 0.0) * wbtPrice!).toStringAsFixed(2)}",
-                                            style: const TextStyle(
-                                              fontSize: 13,
-                                              color: AppColors.textMuted,
-                                            ),
-                                          ),
-                                        ],
-                                      ],
-                                    ),
-                                  ),
-                                  Column(
-                                    crossAxisAlignment: CrossAxisAlignment.end,
-                                    children: [
-                                      Row(
-                                        children: [
-                                          const Icon(
-                                            Icons.timer,
-                                            size: 18,
-                                            color: AppColors.textMuted,
-                                          ),
-                                          const SizedBox(width: 6),
-                                          Text(
-                                            formatDuration(_timeLeft),
-                                            style: const TextStyle(
-                                              fontSize: 16,
-                                              fontWeight: FontWeight.w500,
-                                            ),
-                                          ),
-                                        ],
-                                      ),
-                                      const SizedBox(height: 6),
-                                      Row(
-                                        children: [
-                                          const Icon(
-                                            Icons.calendar_today,
-                                            size: 16,
-                                            color: AppColors.textMuted,
-                                          ),
-                                          const SizedBox(width: 6),
-                                          Text(
-                                            formatDate(
-                                              soulData!['nextRewardStartAt'],
-                                            ),
-                                            style: const TextStyle(
-                                              fontSize: 14,
-                                              color: AppColors.textMuted,
-                                            ),
-                                          ),
-                                        ],
                                       ),
                                     ],
-                                  ),
-                                ],
+                                  ],
+                                );
+                              },
+                            ),
+                            trailing: Container(
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 6,
+                                vertical: 8,
+                              ),
+                              decoration: BoxDecoration(
+                                color: AppColors.bgLight,
+                                borderRadius: BorderRadius.circular(12),
+                              ),
+                              child: Text(
+                                '${formatPercent(soulData!['rewardPercent'])}%',
+                                style: const TextStyle(
+                                  fontWeight: FontWeight.w300,
+                                ),
                               ),
                             ),
                           ),
-                          buildCard(
-                            "🎁 Reward Available",
-                            "${formatTokens(double.tryParse(soulData!['rewardAvailableAmount'].toString()) ?? 0.0)} WBT",
+                          SoulCard(
+                            title: '⏭️ Next Reward',
+                            content: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text(
+                                  "${formatTokens(double.tryParse(soulData!['nextRewardAmount'].toString()) ?? 0.0)} WBT",
+                                  style: const TextStyle(
+                                    fontSize: 22,
+                                    fontWeight: FontWeight.w600,
+                                    color: AppColors.text,
+                                  ),
+                                ),
+                                if (wbtPrice != null) ...[
+                                  const SizedBox(height: 4),
+                                  Text(
+                                    "\$${((double.tryParse(soulData!['nextRewardAmount'].toString()) ?? 0.0) * wbtPrice!).toStringAsFixed(2)}",
+                                    style: const TextStyle(
+                                      fontSize: 13,
+                                      color: AppColors.textMuted,
+                                    ),
+                                  ),
+                                ],
+                              ],
+                            ),
+                            trailing: Column(
+                              crossAxisAlignment: CrossAxisAlignment.end,
+                              children: [
+                                Row(
+                                  children: [
+                                    const Icon(
+                                      Icons.timer,
+                                      size: 18,
+                                      color: AppColors.textMuted,
+                                    ),
+                                    const SizedBox(width: 6),
+                                    Text(
+                                      formatDuration(_timeLeft),
+                                      style: const TextStyle(
+                                        fontSize: 16,
+                                        fontWeight: FontWeight.w500,
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                                const SizedBox(height: 6),
+                                Row(
+                                  children: [
+                                    const Icon(
+                                      Icons.calendar_today,
+                                      size: 16,
+                                      color: AppColors.textMuted,
+                                    ),
+                                    const SizedBox(width: 6),
+                                    Text(
+                                      formatDate(
+                                        soulData!['nextRewardStartAt'],
+                                      ),
+                                      style: const TextStyle(
+                                        fontSize: 14,
+                                        color: AppColors.textMuted,
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ],
+                            ),
                           ),
-                          buildCard(
-                            "📤 Claimed Reward",
-                            "${formatTokens(double.tryParse(soulData!['rewardClaimedAmount'].toString()) ?? 0.0)} WBT",
+                          SoulCard(
+                            title: '🎁 Reward Available',
+                            content: Builder(
+                              builder: (context) {
+                                final amount =
+                                    double.tryParse(
+                                      soulData!['rewardAvailableAmount']
+                                          .toString(),
+                                    ) ??
+                                    0.0;
+                                final usd = wbtPrice != null
+                                    ? amount * wbtPrice!
+                                    : null;
+
+                                return Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    Text(
+                                      "${formatTokens(amount)} WBT",
+                                      style: const TextStyle(
+                                        fontSize: 20,
+                                        fontWeight: FontWeight.w600,
+                                      ),
+                                    ),
+                                    if (usd != null) ...[
+                                      const SizedBox(height: 4),
+                                      Text(
+                                        "\$${usd.toStringAsFixed(2)}",
+                                        style: const TextStyle(
+                                          fontSize: 13,
+                                          color: AppColors.textMuted,
+                                        ),
+                                      ),
+                                    ],
+                                  ],
+                                );
+                              },
+                            ),
+                          ),
+                          SoulCard(
+                            title: '📤 Claimed Reward',
+                            content: Builder(
+                              builder: (context) {
+                                final amount =
+                                    double.tryParse(
+                                      soulData!['rewardClaimedAmount']
+                                          .toString(),
+                                    ) ??
+                                    0.0;
+                                final usd = wbtPrice != null
+                                    ? amount * wbtPrice!
+                                    : null;
+
+                                return Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    Text(
+                                      "${formatTokens(amount)} WBT",
+                                      style: const TextStyle(
+                                        fontSize: 20,
+                                        fontWeight: FontWeight.w600,
+                                      ),
+                                    ),
+                                    if (usd != null) ...[
+                                      const SizedBox(height: 4),
+                                      Text(
+                                        "\$${usd.toStringAsFixed(2)}",
+                                        style: const TextStyle(
+                                          fontSize: 13,
+                                          color: AppColors.textMuted,
+                                        ),
+                                      ),
+                                    ],
+                                  ],
+                                );
+                              },
+                            ),
                           ),
                           if (futureRewards != null)
-                            ...futureRewards!.entries.map(
-                              (entry) =>
-                                  buildCard("📈 ${entry.key}", entry.value),
-                            ),
+                            ...futureRewards!.entries.map((entry) {
+                              final amount =
+                                  double.tryParse(
+                                    entry.value.replaceAll(' WBT', ''),
+                                  ) ??
+                                  0.0;
+                              final usd = wbtPrice != null
+                                  ? amount * wbtPrice!
+                                  : null;
+
+                              return SoulCard(
+                                title: "📈 ${entry.key}",
+                                content: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    Text(
+                                      "${formatTokens(amount)} WBT",
+                                      style: const TextStyle(
+                                        fontSize: 20,
+                                        fontWeight: FontWeight.w600,
+                                      ),
+                                    ),
+                                    if (usd != null) ...[
+                                      const SizedBox(height: 4),
+                                      Text(
+                                        "\$${usd.toStringAsFixed(2)}",
+                                        style: const TextStyle(
+                                          fontSize: 13,
+                                          color: AppColors.textMuted,
+                                        ),
+                                      ),
+                                    ],
+                                  ],
+                                ),
+                              );
+                            }),
                         ],
                       ),
                     )
@@ -794,6 +838,57 @@ class ShimmerPlaceholderList extends StatelessWidget {
               ],
             ),
           ),
+        ),
+      ),
+    );
+  }
+}
+
+// --- SoulCard widget ---
+class SoulCard extends StatelessWidget {
+  final String title;
+  final Widget content;
+  final Widget? trailing;
+
+  const SoulCard({
+    super.key,
+    required this.title,
+    required this.content,
+    this.trailing,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
+      child: Container(
+        padding: const EdgeInsets.all(12),
+        decoration: BoxDecoration(
+          color: AppColors.bg,
+          borderRadius: BorderRadius.circular(16),
+          border: Border.all(color: AppColors.borderMuted),
+        ),
+        child: Row(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    title,
+                    style: const TextStyle(
+                      color: AppColors.textMuted,
+                      fontSize: 13,
+                    ),
+                  ),
+                  const SizedBox(height: 6),
+                  content,
+                ],
+              ),
+            ),
+            if (trailing != null) trailing!,
+          ],
         ),
       ),
     );
