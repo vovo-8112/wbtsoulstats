@@ -1,7 +1,8 @@
 import 'package:flutter/material.dart';
 import 'theme/app_colors.dart';
 import 'package:flutter/foundation.dart';
-import 'dart:html' as html;
+// ignore: deprecated_member_use, avoid_web_libraries_in_flutter
+import 'dart:html' as html show window;
 import 'package:http/http.dart' as http;
 import 'package:intl/intl.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -10,8 +11,10 @@ import 'web_local_storage.dart' if (dart.library.io) 'noop.dart';
 import "package:shimmer/shimmer.dart";
 import 'services/wbt_price.dart';
 import 'services/soul_service.dart';
+import 'services/stats_service.dart';
 import 'utils/reward_calculator.dart';
 import 'dart:async';
+import 'ui/stats_popup.dart';
 
 void main() {
   runApp(const SoulApp());
@@ -108,8 +111,11 @@ class _SoulHomePageState extends State<SoulHomePage> {
   double? wbtPrice;
   final WBTPrice priceService = WBTPrice();
   final SoulService soulService = SoulService();
+  final StatsService statsService = StatsService();
   Timer? _countdownTimer;
   Duration? _timeLeft;
+  Map<String, dynamic>? statsData;
+  bool statsLoading = false;
 
   @override
   void initState() {
@@ -345,24 +351,90 @@ class _SoulHomePageState extends State<SoulHomePage> {
                 child: Row(
                   mainAxisSize: MainAxisSize.min,
                   children: [
+                    // --- Show Stats Button (FIRST) ---
+                    ElevatedButton(
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: AppColors.primary,
+                        foregroundColor: Colors.white,
+                        padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 10),
+                        textStyle: const TextStyle(
+                          fontSize: 15,
+                          fontWeight: FontWeight.w700,
+                          letterSpacing: 0.3,
+                        ),
+                        minimumSize: const Size(0, 0),
+                        tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                        elevation: 0,
+                      ),
+                      onPressed: statsLoading
+                          ? null
+                          : () async {
+                              setState(() {
+                                statsLoading = true;
+                              });
+                              final client = http.Client();
+                              try {
+                                final data = await statsService.fetchStats(client);
+                                setState(() {
+                                  statsData = data;
+                                  statsLoading = false;
+                                });
+                                showDialog(
+                                  context: context,
+                                  builder: (context) => StatsDialog(
+                                    stats: statsData!,
+                                  ),
+                                );
+                              } catch (e) {
+                                setState(() {
+                                  statsLoading = false;
+                                });
+                                ScaffoldMessenger.of(context).showSnackBar(
+                                  SnackBar(content: Text('❌ Error loading stats: $e')),
+                                );
+                              } finally {
+                                client.close();
+                              }
+                            },
+                      child: statsLoading
+                          ? const SizedBox(
+                              width: 18,
+                              height: 18,
+                              child: CircularProgressIndicator(
+                                strokeWidth: 2,
+                                valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
+                              ),
+                            )
+                          : const Text("Show Stats"),
+                    ),
+                    const SizedBox(width: 14),
+                    // --- WBT Price (SECOND) ---
                     Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                      padding: const EdgeInsets.symmetric(horizontal: 13, vertical: 7),
                       decoration: BoxDecoration(
                         color: AppColors.bg,
                         borderRadius: BorderRadius.circular(20),
-                        border: Border.all(color: AppColors.borderMuted),
+                        border: Border.all(color: AppColors.borderMuted, width: 1.1),
                       ),
                       child: Text(
                         'WBT \$${wbtPrice!.toStringAsFixed(2)}',
-                        style: const TextStyle(fontSize: 13),
+                        style: const TextStyle(
+                          fontSize: 13,
+                          fontWeight: FontWeight.w600,
+                          color: AppColors.text,
+                        ),
                       ),
                     ),
-                    const SizedBox(width: 6),
+                    const SizedBox(width: 10),
+                    // --- Info Icon (THIRD) ---
                     Tooltip(
                       message: 'Data from WhiteStat',
                       child: GestureDetector(
                         onTap: () => openUrl('https://whitestat.com/'),
-                        child: const Icon(Icons.info_outline, size: 16, color: AppColors.textMuted),
+                        child: const Icon(Icons.info_outline, size: 18, color: AppColors.textMuted),
                       ),
                     ),
                   ],
