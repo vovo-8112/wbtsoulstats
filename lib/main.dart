@@ -327,6 +327,7 @@ class _SoulHomePageState extends State<SoulHomePage> {
     );
   }
 
+
   @override
   Widget build(BuildContext context) {
     return GestureDetector(
@@ -336,30 +337,35 @@ class _SoulHomePageState extends State<SoulHomePage> {
         appBar: AppBar(
           backgroundColor: AppColors.bgDark,
           elevation: 0,
-          title: const Text(
-            'Soul Info',
-            style: TextStyle(fontWeight: FontWeight.w600),
-          ),
+          title: Container(), // порожній заголовок
           actions: [
             if (wbtPrice != null)
               Padding(
                 padding: const EdgeInsets.only(right: 16),
-                child: Center(
-                  child: Container(
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 10,
-                      vertical: 6,
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                      decoration: BoxDecoration(
+                        color: AppColors.bg,
+                        borderRadius: BorderRadius.circular(20),
+                        border: Border.all(color: AppColors.borderMuted),
+                      ),
+                      child: Text(
+                        'WBT \$${wbtPrice!.toStringAsFixed(2)}',
+                        style: const TextStyle(fontSize: 13),
+                      ),
                     ),
-                    decoration: BoxDecoration(
-                      color: AppColors.bg,
-                      borderRadius: BorderRadius.circular(20),
-                      border: Border.all(color: AppColors.borderMuted),
+                    const SizedBox(width: 6),
+                    Tooltip(
+                      message: 'Data from WhiteStat',
+                      child: GestureDetector(
+                        onTap: () => openUrl('https://whitestat.com/'),
+                        child: const Icon(Icons.info_outline, size: 16, color: AppColors.textMuted),
+                      ),
                     ),
-                    child: Text(
-                      'WBT \$${wbtPrice!.toStringAsFixed(2)}',
-                      style: const TextStyle(fontSize: 13),
-                    ),
-                  ),
+                  ],
                 ),
               ),
           ],
