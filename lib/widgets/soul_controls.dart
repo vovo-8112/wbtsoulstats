@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 import '../theme/app_colors.dart';
-import 'dart:html' as html show window;
 
 class SoulControls extends StatelessWidget {
   final TextEditingController controller;
