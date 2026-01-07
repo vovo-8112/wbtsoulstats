@@ -14,9 +14,8 @@ import '../services/wbt_price.dart';
 import '../services/soul_service.dart';
 import '../services/stats_service.dart';
 import '../utils/reward_calculator.dart';
-import '../widgets/soul_card.dart';
+import '../widgets/soul_cards_list.dart';
 import '../widgets/shimmer_placeholder_list.dart';
-import '../ui/stats_popup.dart';
 import '../web_local_storage.dart' if (dart.library.io) '../noop.dart';
 import '../widgets/soul_top_bar.dart';
 import '../widgets/soul_controls.dart';
@@ -286,7 +285,7 @@ class _SoulHomePageState extends State<SoulHomePage> {
               child: Column(
                 children: [
                   Padding(
-                    padding: const EdgeInsets.all(16),
+                    padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
                     child: SoulControls(
                       controller: _controller,
                       loading: loading,
@@ -354,246 +353,17 @@ class _SoulHomePageState extends State<SoulHomePage> {
                     )
                   else if (soulData != null)
                     Expanded(
-                      child: ListView(
-                        children: [
-                          SoulCard(
-                            title: '💰 Current Hold',
-                            content: Builder(
-                              builder: (context) {
-                                final holdAmount =
-                                    double.tryParse(
-                                      soulData!['holdAmount'].toString(),
-                                    ) ??
-                                    0.0;
-                                final holdUsd = wbtPrice != null
-                                    ? holdAmount * wbtPrice!
-                                    : null;
-
-                                return Column(
-                                  crossAxisAlignment: CrossAxisAlignment.start,
-                                  children: [
-                                    Text(
-                                      '${formatTokens(holdAmount)} WBT',
-                                      style: const TextStyle(
-                                        fontSize: 20,
-                                        fontWeight: FontWeight.w600,
-                                      ),
-                                    ),
-                                    if (holdUsd != null) ...[
-                                      const SizedBox(height: 4),
-                                      Text(
-                                        '\$${holdUsd.toStringAsFixed(2)}',
-                                        style: const TextStyle(
-                                          fontSize: 13,
-                                          color: AppColors.textMuted,
-                                        ),
-                                      ),
-                                    ],
-                                  ],
-                                );
-                              },
-                            ),
-                            trailing: Container(
-                              padding: const EdgeInsets.symmetric(
-                                horizontal: 6,
-                                vertical: 8,
-                              ),
-                              decoration: BoxDecoration(
-                                color: AppColors.bgLight,
-                                borderRadius: BorderRadius.circular(12),
-                              ),
-                              child: Text(
-                                '${formatPercent(soulData!['rewardPercent'])}%',
-                                style: const TextStyle(
-                                  fontWeight: FontWeight.w300,
-                                ),
-                              ),
-                            ),
+                      child: Padding(
+                        padding: const EdgeInsets.symmetric(horizontal: 16),
+                        child: ConstrainedBox(
+                          constraints: const BoxConstraints(maxWidth: 1100),
+                          child: SoulCardsList(
+                            soulData: soulData!,
+                            futureRewards: futureRewards,
+                            wbtPrice: wbtPrice,
+                            timeLeft: _timeLeft,
                           ),
-                          SoulCard(
-                            title: '⏭️ Next Reward',
-                            content: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                Text(
-                                  "${formatTokens(double.tryParse(soulData!['nextRewardAmount'].toString()) ?? 0.0)} WBT",
-                                  style: const TextStyle(
-                                    fontSize: 22,
-                                    fontWeight: FontWeight.w600,
-                                    color: AppColors.text,
-                                  ),
-                                ),
-                                if (wbtPrice != null) ...[
-                                  const SizedBox(height: 4),
-                                  Text(
-                                    "\$${((double.tryParse(soulData!['nextRewardAmount'].toString()) ?? 0.0) * wbtPrice!).toStringAsFixed(2)}",
-                                    style: const TextStyle(
-                                      fontSize: 13,
-                                      color: AppColors.textMuted,
-                                    ),
-                                  ),
-                                ],
-                              ],
-                            ),
-                            trailing: Column(
-                              crossAxisAlignment: CrossAxisAlignment.end,
-                              children: [
-                                Row(
-                                  children: [
-                                    const Icon(
-                                      Icons.timer,
-                                      size: 18,
-                                      color: AppColors.textMuted,
-                                    ),
-                                    const SizedBox(width: 6),
-                                    Text(
-                                      formatDuration(_timeLeft),
-                                      style: const TextStyle(
-                                        fontSize: 16,
-                                        fontWeight: FontWeight.w500,
-                                      ),
-                                    ),
-                                  ],
-                                ),
-                                const SizedBox(height: 6),
-                                Row(
-                                  children: [
-                                    const Icon(
-                                      Icons.calendar_today,
-                                      size: 16,
-                                      color: AppColors.textMuted,
-                                    ),
-                                    const SizedBox(width: 6),
-                                    Text(
-                                      formatDate(
-                                        soulData!['nextRewardStartAt'],
-                                      ),
-                                      style: const TextStyle(
-                                        fontSize: 14,
-                                        color: AppColors.textMuted,
-                                      ),
-                                    ),
-                                  ],
-                                ),
-                              ],
-                            ),
-                          ),
-                          SoulCard(
-                            title: '🎁 Reward Available',
-                            content: Builder(
-                              builder: (context) {
-                                final amount =
-                                    double.tryParse(
-                                      soulData!['rewardAvailableAmount']
-                                          .toString(),
-                                    ) ??
-                                    0.0;
-                                final usd = wbtPrice != null
-                                    ? amount * wbtPrice!
-                                    : null;
-
-                                return Column(
-                                  crossAxisAlignment: CrossAxisAlignment.start,
-                                  children: [
-                                    Text(
-                                      "${formatTokens(amount)} WBT",
-                                      style: const TextStyle(
-                                        fontSize: 20,
-                                        fontWeight: FontWeight.w600,
-                                      ),
-                                    ),
-                                    if (usd != null) ...[
-                                      const SizedBox(height: 4),
-                                      Text(
-                                        "\$${usd.toStringAsFixed(2)}",
-                                        style: const TextStyle(
-                                          fontSize: 13,
-                                          color: AppColors.textMuted,
-                                        ),
-                                      ),
-                                    ],
-                                  ],
-                                );
-                              },
-                            ),
-                          ),
-                          SoulCard(
-                            title: '📤 Claimed Reward',
-                            content: Builder(
-                              builder: (context) {
-                                final amount =
-                                    double.tryParse(
-                                      soulData!['rewardClaimedAmount']
-                                          .toString(),
-                                    ) ??
-                                    0.0;
-                                final usd = wbtPrice != null
-                                    ? amount * wbtPrice!
-                                    : null;
-
-                                return Column(
-                                  crossAxisAlignment: CrossAxisAlignment.start,
-                                  children: [
-                                    Text(
-                                      "${formatTokens(amount)} WBT",
-                                      style: const TextStyle(
-                                        fontSize: 20,
-                                        fontWeight: FontWeight.w600,
-                                      ),
-                                    ),
-                                    if (usd != null) ...[
-                                      const SizedBox(height: 4),
-                                      Text(
-                                        "\$${usd.toStringAsFixed(2)}",
-                                        style: const TextStyle(
-                                          fontSize: 13,
-                                          color: AppColors.textMuted,
-                                        ),
-                                      ),
-                                    ],
-                                  ],
-                                );
-                              },
-                            ),
-                          ),
-                          if (futureRewards != null)
-                            ...futureRewards!.entries.map((entry) {
-                              final amount =
-                                  double.tryParse(
-                                    entry.value.replaceAll(' WBT', ''),
-                                  ) ??
-                                  0.0;
-                              final usd = wbtPrice != null
-                                  ? amount * wbtPrice!
-                                  : null;
-
-                              return SoulCard(
-                                title: "📈 ${entry.key}",
-                                content: Column(
-                                  crossAxisAlignment: CrossAxisAlignment.start,
-                                  children: [
-                                    Text(
-                                      "${formatTokens(amount)} WBT",
-                                      style: const TextStyle(
-                                        fontSize: 20,
-                                        fontWeight: FontWeight.w600,
-                                      ),
-                                    ),
-                                    if (usd != null) ...[
-                                      const SizedBox(height: 4),
-                                      Text(
-                                        "\$${usd.toStringAsFixed(2)}",
-                                        style: const TextStyle(
-                                          fontSize: 13,
-                                          color: AppColors.textMuted,
-                                        ),
-                                      ),
-                                    ],
-                                  ],
-                                ),
-                              );
-                            }),
-                        ],
+                        ),
                       ),
                     )
                   else
@@ -614,24 +384,4 @@ String formatTokens(double amount) {
 
 String formatPercent(double amount) {
   return amount.toStringAsFixed(2);
-}
-
-String formatDuration(Duration? d) {
-  if (d == null) return '--:--:--';
-
-  final days = d.inDays;
-  final hours = d.inHours % 24;
-  final minutes = d.inMinutes % 60;
-  final seconds = d.inSeconds % 60;
-
-  if (days > 0) {
-    return '${days}d '
-        '${hours.toString().padLeft(2, '0')}:'
-        '${minutes.toString().padLeft(2, '0')}:'
-        '${seconds.toString().padLeft(2, '0')}';
-  }
-
-  return '${hours.toString().padLeft(2, '0')}:'
-      '${minutes.toString().padLeft(2, '0')}:'
-      '${seconds.toString().padLeft(2, '0')}';
 }
