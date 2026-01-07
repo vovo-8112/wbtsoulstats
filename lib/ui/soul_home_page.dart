@@ -18,7 +18,7 @@ import '../widgets/soul_card.dart';
 import '../widgets/shimmer_placeholder_list.dart';
 import '../ui/stats_popup.dart';
 import '../web_local_storage.dart' if (dart.library.io) '../noop.dart';
-
+import '../widgets/soul_top_bar.dart';
 
 class SoulHomePage extends StatefulWidget {
   const SoulHomePage({super.key});
@@ -269,101 +269,14 @@ class _SoulHomePageState extends State<SoulHomePage> {
           elevation: 0,
           title: Container(), // порожній заголовок
           actions: [
-            if (wbtPrice != null)
-              Padding(
-                padding: const EdgeInsets.only(right: 16),
-                child: Row(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    // --- Show Stats Button (FIRST) ---
-                    ElevatedButton(
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: AppColors.primary,
-                        foregroundColor: AppColors.textButton,
-                        textStyle: const TextStyle(
-                          fontSize: 14,
-                          fontWeight: FontWeight.w600,
-                          letterSpacing: 0,
-                        ),
-                        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(12),
-                        ),
-                        elevation: 0,
-                        minimumSize: const Size(0, 0),
-                        tapTargetSize: MaterialTapTargetSize.shrinkWrap,
-                      ),
-                      onPressed: statsLoading
-                          ? null
-                          : () async {
-                              setState(() {
-                                statsLoading = true;
-                              });
-                              final client = http.Client();
-                              try {
-                                final data = await statsService.fetchStats(client);
-                                setState(() {
-                                  statsData = data;
-                                  statsLoading = false;
-                                });
-                                showDialog(
-                                  context: context,
-                                  builder: (context) => StatsDialog(
-                                    stats: statsData!,
-                                  ),
-                                );
-                              } catch (e) {
-                                setState(() {
-                                  statsLoading = false;
-                                });
-                                ScaffoldMessenger.of(context).showSnackBar(
-                                  SnackBar(content: Text('❌ Error loading stats: $e')),
-                                );
-                              } finally {
-                                client.close();
-                              }
-                            },
-                      child: statsLoading
-                          ? const SizedBox(
-                              width: 18,
-                              height: 18,
-                              child: CircularProgressIndicator(
-                                strokeWidth: 2,
-                                valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
-                              ),
-                            )
-                          : const Text("Show Stats"),
-                    ),
-                    const SizedBox(width: 14),
-                    // --- WBT Price (SECOND) ---
-                    Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 13, vertical: 7),
-                      decoration: BoxDecoration(
-                        color: AppColors.bg,
-                        borderRadius: BorderRadius.circular(20),
-                        border: Border.all(color: AppColors.borderMuted, width: 1.1),
-                      ),
-                      child: Text(
-                        'WBT \$${wbtPrice!.toStringAsFixed(2)}',
-                        style: const TextStyle(
-                          fontSize: 13,
-                          fontWeight: FontWeight.w600,
-                          color: AppColors.text,
-                        ),
-                      ),
-                    ),
-                    const SizedBox(width: 10),
-                    // --- Info Icon (THIRD) ---
-                    Tooltip(
-                      message: 'Data from WhiteStat',
-                      child: GestureDetector(
-                        onTap: () => openUrl('https://whitestat.com/'),
-                        child: const Icon(Icons.info_outline, size: 18, color: AppColors.textMuted),
-                      ),
-                    ),
-                  ],
-                ),
-              ),
+            SoulTopBar(
+              wbtPrice: wbtPrice,
+              statsLoading: statsLoading,
+              statsData: statsData,
+              onOpenInfo: () => openUrl('https://whitestat.com/'),
+              onStatsLoaded: (data) => setState(() => statsData = data),
+              onStatsLoading: (v) => setState(() => statsLoading = v),
+            ),
           ],
         ),
         body: SafeArea(
