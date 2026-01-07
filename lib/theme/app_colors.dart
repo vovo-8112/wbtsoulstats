@@ -8,7 +8,7 @@ class AppColors {
 
   static const textButton      = Color(0xFF0C0D12);
   // === TEXT ===
-  static const text      = Color.fromARGB(209, 235, 235, 235); // oklch(0.96 0.01 264)
+  static const text      = Color.fromARGB(255, 233, 232, 232); // oklch(0.96 0.01 264)
   static const textMuted = Color(0xFFB5B8C2); // oklch(0.76 0.01 264)
 
   // === ACCENTS ===

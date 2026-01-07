@@ -500,7 +500,7 @@ class _SoulHomePageState extends State<SoulHomePage> {
                                     strokeWidth: 2,
                                   ),
                                 )
-                              : const Text('Load'),
+                              : const Text('Load 🔍'),
                         ),
                         const SizedBox(height: 10),
                         Row(
@@ -522,7 +522,7 @@ class _SoulHomePageState extends State<SoulHomePage> {
                                     'https://explorer.whitechain.io/soul/$soulId',
                                   );
                                 },
-                                child: const Text('Explorer'),
+                                child: const Text('Explorer 📁'),
                               ),
                             ),
                             const SizedBox(width: 10),
@@ -542,7 +542,7 @@ class _SoulHomePageState extends State<SoulHomePage> {
                                     'https://explorer.whitechain.io/address/0x0000000000000000000000000000000000001001/contract/write#claim',
                                   );
                                 },
-                                child: const Text('Claim'),
+                                child: const Text('Claim 💸'),
                               ),
                             ),
                             const SizedBox(width: 10),
@@ -595,9 +595,7 @@ class _SoulHomePageState extends State<SoulHomePage> {
                                 child: Row(
                                   mainAxisAlignment: MainAxisAlignment.center,
                                   children: const [
-                                    Text('Add'),
-                                    SizedBox(width: 4),
-                                    Icon(Icons.calendar_today, size: 18),
+                                    Text('Add 📅'),
                                   ],
                                 ),
                               ),
