@@ -19,6 +19,7 @@ import '../widgets/shimmer_placeholder_list.dart';
 import '../ui/stats_popup.dart';
 import '../web_local_storage.dart' if (dart.library.io) '../noop.dart';
 import '../widgets/soul_top_bar.dart';
+import '../widgets/soul_controls.dart';
 
 class SoulHomePage extends StatefulWidget {
   const SoulHomePage({super.key});
@@ -257,7 +258,6 @@ class _SoulHomePageState extends State<SoulHomePage> {
     );
   }
 
-
   @override
   Widget build(BuildContext context) {
     return GestureDetector(
@@ -287,159 +287,65 @@ class _SoulHomePageState extends State<SoulHomePage> {
                 children: [
                   Padding(
                     padding: const EdgeInsets.all(16),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.stretch,
-                      children: [
-                        TextField(
-                          controller: _controller,
-                          keyboardType: TextInputType.number,
-                          decoration: const InputDecoration(
-                            labelText: 'Soul ID',
-                            border: OutlineInputBorder(),
-                          ),
-                        ),
-                        const SizedBox(height: 10),
-                        ElevatedButton(
-                          style: ElevatedButton.styleFrom(
-                            foregroundColor: AppColors.textButton,
-                            textStyle: const TextStyle(
-                              fontSize: 14,
-                              fontWeight: FontWeight.w600,
-                              letterSpacing: 0,
-                            ),
-                            padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 16),
-                          ),
-                          onPressed: loading
-                              ? null
-                              : () {
-                                  FocusScope.of(context).unfocus();
-                                  saveSoulId(_controller.text);
-                                  fetchSoulData(_controller.text);
-                                  if (kIsWeb) {
-                                    final newUrl = Uri.base.replace(
-                                      queryParameters: {
-                                        'soulid': _controller.text,
-                                      },
-                                    );
-                                    html.window.history.pushState(
-                                      null,
-                                      'Soul Info',
-                                      newUrl.toString(),
-                                    );
-                                  }
-                                },
-                          child: loading
-                              ? SizedBox(
-                                  width: 20,
-                                  height: 20,
-                                  child: CircularProgressIndicator(
-                                    color: AppColors.textButton,
-                                    strokeWidth: 2,
-                                  ),
-                                )
-                              : const Text('Load 🔍'),
-                        ),
-                        const SizedBox(height: 10),
-                        Row(
-                          children: [
-                            Expanded(
-                              child: ElevatedButton(
-                                style: ElevatedButton.styleFrom(
-                                  foregroundColor: AppColors.textButton,
-                                  textStyle: const TextStyle(
-                                    fontSize: 14,
-                                    fontWeight: FontWeight.w600,
-                                    letterSpacing: 0,
-                                  ),
-                                  padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 16),
-                                ),
-                                onPressed: () {
-                                  final soulId = _controller.text;
-                                  openUrl(
-                                    'https://explorer.whitechain.io/soul/$soulId',
-                                  );
-                                },
-                                child: const Text('Explorer 📁'),
-                              ),
-                            ),
-                            const SizedBox(width: 10),
-                            Expanded(
-                              child: ElevatedButton(
-                                style: ElevatedButton.styleFrom(
-                                  foregroundColor: AppColors.textButton,
-                                  textStyle: const TextStyle(
-                                    fontSize: 14,
-                                    fontWeight: FontWeight.w600,
-                                    letterSpacing: 0,
-                                  ),
-                                  padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 16),
-                                ),
-                                onPressed: () {
-                                  openUrl(
-                                    'https://explorer.whitechain.io/address/0x0000000000000000000000000000000000001001/contract/write#claim',
-                                  );
-                                },
-                                child: const Text('Claim 💸'),
-                              ),
-                            ),
-                            const SizedBox(width: 10),
-                            Expanded(
-                              child: ElevatedButton(
-                                style: ElevatedButton.styleFrom(
-                                  foregroundColor: AppColors.textButton,
-                                  textStyle: const TextStyle(
-                                    fontSize: 14,
-                                    fontWeight: FontWeight.w600,
-                                    letterSpacing: 0,
-                                  ),
-                                  padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 16),
-                                ),
-                                onPressed: () {
-                                  final title = Uri.encodeComponent(
-                                    "Next Soul Reward",
-                                  );
-                                  final details = Uri.encodeComponent(
-                                    "Reward of ${formatTokens(double.tryParse(soulData?['nextRewardAmount']?.toString() ?? '0.0') ?? 0.0)} WBT",
-                                  );
+                    child: SoulControls(
+                      controller: _controller,
+                      loading: loading,
+                      onLoadPressed: () {
+                        FocusScope.of(context).unfocus();
+                        saveSoulId(_controller.text);
+                        fetchSoulData(_controller.text);
+                        if (kIsWeb) {
+                          final newUrl = Uri.base.replace(
+                            queryParameters: {'soulid': _controller.text},
+                          );
+                          html.window.history.pushState(
+                            null,
+                            'Soul Info',
+                            newUrl.toString(),
+                          );
+                        }
+                      },
+                      onExplorerPressed: () {
+                        final soulId = _controller.text;
+                        openUrl('https://explorer.whitechain.io/soul/$soulId');
+                      },
+                      onClaimPressed: () {
+                        openUrl(
+                          'https://explorer.whitechain.io/address/0x0000000000000000000000000000000000001001/contract/write#claim',
+                        );
+                      },
+                      onAddCalendarPressed: () {
+                        final title = Uri.encodeComponent("Next Soul Reward");
+                        final details = Uri.encodeComponent(
+                          "Reward of ${formatTokens(double.tryParse(soulData?['nextRewardAmount']?.toString() ?? '0.0') ?? 0.0)} WBT",
+                        );
 
-                                  final startDateTime =
-                                      DateTime.tryParse(
-                                        soulData?['nextRewardStartAt'] ?? '',
-                                      )?.toUtc() ??
-                                      DateTime.now().toUtc();
-                                  final endDateTime = startDateTime.add(
-                                    const Duration(minutes: 5),
-                                  );
+                        final startDateTime =
+                            DateTime.tryParse(
+                              soulData?['nextRewardStartAt'] ?? '',
+                            )?.toUtc() ??
+                            DateTime.now().toUtc();
+                        final endDateTime = startDateTime.add(
+                          const Duration(minutes: 5),
+                        );
 
-                                  String formatGoogleDate(DateTime dt) =>
-                                      dt
-                                          .toIso8601String()
-                                          .replaceAll(RegExp(r'[:-]'), '')
-                                          .split('.')
-                                          .first +
-                                      'Z';
+                        String formatGoogleDate(DateTime dt) =>
+                            '${dt
+                                .toIso8601String()
+                                .replaceAll(RegExp(r'[:-]'), '')
+                                .split('.')
+                                .first}Z';
 
-                                  final url = Uri.parse(
-                                    'https://calendar.google.com/calendar/render?action=TEMPLATE'
-                                    '&text=$title'
-                                    '&details=$details'
-                                    '&dates=${formatGoogleDate(startDateTime)}/${formatGoogleDate(endDateTime)}'
-                                    '&location=Whitechain',
-                                  );
+                        final url = Uri.parse(
+                          'https://calendar.google.com/calendar/render?action=TEMPLATE'
+                          '&text=$title'
+                          '&details=$details'
+                          '&dates=${formatGoogleDate(startDateTime)}/${formatGoogleDate(endDateTime)}'
+                          '&location=Whitechain',
+                        );
 
-                                  html.window.open(url.toString(), '_blank');
-                                },
-                                child: Row(
-                                  mainAxisAlignment: MainAxisAlignment.center,
-                                  children: const [
-                                    Text('Add 📅'),
-                                  ],
-                                ),
-                              ),
-                            ),
-                          ],
-                        ),
-                      ],
+                        html.window.open(url.toString(), '_blank');
+                      },
                     ),
                   ),
                   if (loading)
@@ -729,4 +635,3 @@ String formatDuration(Duration? d) {
       '${minutes.toString().padLeft(2, '0')}:'
       '${seconds.toString().padLeft(2, '0')}';
 }
-
