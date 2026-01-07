@@ -15,85 +15,10 @@ import 'services/stats_service.dart';
 import 'utils/reward_calculator.dart';
 import 'dart:async';
 import 'ui/stats_popup.dart';
+import 'app.dart';
 
 void main() {
   runApp(const SoulApp());
-}
-
-class SoulApp extends StatelessWidget {
-  const SoulApp({super.key});
-
-  @override
-  Widget build(BuildContext context) {
-    final theme = ThemeData(
-      brightness: Brightness.dark,
-      scaffoldBackgroundColor: AppColors.bgDark,
-      fontFamily: 'Manrope',
-      colorScheme: const ColorScheme.dark(
-        primary: AppColors.primary,
-        secondary: AppColors.secondary,
-        surface: AppColors.bg,
-        background: AppColors.bgDark,
-        error: AppColors.danger,
-        onPrimary: AppColors.bgDark,
-        onSecondary: AppColors.bgDark,
-        onSurface: AppColors.text,
-        onBackground: AppColors.text,
-        onError: AppColors.text,
-      ),
-      textTheme: const TextTheme(
-        bodyMedium: TextStyle(color: AppColors.text),
-        bodySmall: TextStyle(color: AppColors.textMuted),
-        titleMedium: TextStyle(
-          color: AppColors.text,
-          fontWeight: FontWeight.w600,
-        ),
-      ),
-      inputDecorationTheme: InputDecorationTheme(
-        filled: true,
-        fillColor: AppColors.bg,
-        border: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(10),
-          borderSide: const BorderSide(color: AppColors.border),
-        ),
-        enabledBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(10),
-          borderSide: const BorderSide(color: AppColors.border),
-        ),
-        focusedBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(10),
-          borderSide: const BorderSide(color: AppColors.primary),
-        ),
-        labelStyle: const TextStyle(color: AppColors.textMuted),
-      ),
-      elevatedButtonTheme: ElevatedButtonThemeData(
-        style: ElevatedButton.styleFrom(
-          backgroundColor: AppColors.primary,
-          foregroundColor: AppColors.bgDark,
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(10),
-          ),
-          padding: const EdgeInsets.symmetric(vertical: 14),
-        ),
-      ),
-      cardTheme: CardThemeData(
-        color: AppColors.bg,
-        elevation: 0,
-        margin: const EdgeInsets.symmetric(vertical: 6),
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(12),
-          side: const BorderSide(color: AppColors.borderMuted),
-        ),
-      ),
-    );
-
-    return MaterialApp(
-      title: 'Soul Info',
-      debugShowCheckedModeBanner: false,
-      theme: theme,
-      home: const SoulHomePage(),
-    );
-  }
 }
 
 class SoulHomePage extends StatefulWidget {
