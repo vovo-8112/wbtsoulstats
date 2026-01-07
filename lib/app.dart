@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'theme/app_theme.dart';
-import 'main.dart';
+import 'ui/soul_home_page.dart';
 
 class SoulApp extends StatelessWidget {
   const SoulApp({super.key});
