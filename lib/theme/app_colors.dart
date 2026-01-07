@@ -6,8 +6,9 @@ class AppColors {
   static const bg      = Color(0xFF0C0D12); // oklch(0.15 0.005 264)
   static const bgLight = Color(0xFF14151B); // oklch(0.2 0.005 264)
 
+  static const textButton      = Color(0xFF0C0D12);
   // === TEXT ===
-  static const text      = Color(0xFFF2F3F7); // oklch(0.96 0.01 264)
+  static const text      = Color.fromARGB(209, 235, 235, 235); // oklch(0.96 0.01 264)
   static const textMuted = Color(0xFFB5B8C2); // oklch(0.76 0.01 264)
 
   // === ACCENTS ===

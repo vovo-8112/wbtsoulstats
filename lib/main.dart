@@ -355,19 +355,19 @@ class _SoulHomePageState extends State<SoulHomePage> {
                     ElevatedButton(
                       style: ElevatedButton.styleFrom(
                         backgroundColor: AppColors.primary,
-                        foregroundColor: Colors.white,
-                        padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 10),
+                        foregroundColor: AppColors.textButton,
                         textStyle: const TextStyle(
-                          fontSize: 15,
-                          fontWeight: FontWeight.w700,
-                          letterSpacing: 0.3,
+                          fontSize: 14,
+                          fontWeight: FontWeight.w600,
+                          letterSpacing: 0,
                         ),
-                        minimumSize: const Size(0, 0),
-                        tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
                         shape: RoundedRectangleBorder(
                           borderRadius: BorderRadius.circular(12),
                         ),
                         elevation: 0,
+                        minimumSize: const Size(0, 0),
+                        tapTargetSize: MaterialTapTargetSize.shrinkWrap,
                       ),
                       onPressed: statsLoading
                           ? null
@@ -463,6 +463,15 @@ class _SoulHomePageState extends State<SoulHomePage> {
                         ),
                         const SizedBox(height: 10),
                         ElevatedButton(
+                          style: ElevatedButton.styleFrom(
+                            foregroundColor: AppColors.textButton,
+                            textStyle: const TextStyle(
+                              fontSize: 14,
+                              fontWeight: FontWeight.w600,
+                              letterSpacing: 0,
+                            ),
+                            padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 16),
+                          ),
                           onPressed: loading
                               ? null
                               : () {
@@ -487,7 +496,7 @@ class _SoulHomePageState extends State<SoulHomePage> {
                                   width: 20,
                                   height: 20,
                                   child: CircularProgressIndicator(
-                                    color: Colors.white,
+                                    color: AppColors.textButton,
                                     strokeWidth: 2,
                                   ),
                                 )
@@ -498,6 +507,15 @@ class _SoulHomePageState extends State<SoulHomePage> {
                           children: [
                             Expanded(
                               child: ElevatedButton(
+                                style: ElevatedButton.styleFrom(
+                                  foregroundColor: AppColors.textButton,
+                                  textStyle: const TextStyle(
+                                    fontSize: 14,
+                                    fontWeight: FontWeight.w600,
+                                    letterSpacing: 0,
+                                  ),
+                                  padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 16),
+                                ),
                                 onPressed: () {
                                   final soulId = _controller.text;
                                   openUrl(
@@ -510,6 +528,15 @@ class _SoulHomePageState extends State<SoulHomePage> {
                             const SizedBox(width: 10),
                             Expanded(
                               child: ElevatedButton(
+                                style: ElevatedButton.styleFrom(
+                                  foregroundColor: AppColors.textButton,
+                                  textStyle: const TextStyle(
+                                    fontSize: 14,
+                                    fontWeight: FontWeight.w600,
+                                    letterSpacing: 0,
+                                  ),
+                                  padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 16),
+                                ),
                                 onPressed: () {
                                   openUrl(
                                     'https://explorer.whitechain.io/address/0x0000000000000000000000000000000000001001/contract/write#claim',
@@ -521,6 +548,15 @@ class _SoulHomePageState extends State<SoulHomePage> {
                             const SizedBox(width: 10),
                             Expanded(
                               child: ElevatedButton(
+                                style: ElevatedButton.styleFrom(
+                                  foregroundColor: AppColors.textButton,
+                                  textStyle: const TextStyle(
+                                    fontSize: 14,
+                                    fontWeight: FontWeight.w600,
+                                    letterSpacing: 0,
+                                  ),
+                                  padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 16),
+                                ),
                                 onPressed: () {
                                   final title = Uri.encodeComponent(
                                     "Next Soul Reward",
@@ -556,15 +592,10 @@ class _SoulHomePageState extends State<SoulHomePage> {
 
                                   html.window.open(url.toString(), '_blank');
                                 },
-                                style: ElevatedButton.styleFrom(
-                                  padding: const EdgeInsets.symmetric(
-                                    vertical: 8,
-                                  ),
-                                ),
                                 child: Row(
                                   mainAxisAlignment: MainAxisAlignment.center,
                                   children: const [
-                                    Text('Add', style: TextStyle(fontSize: 14)),
+                                    Text('Add'),
                                     SizedBox(width: 4),
                                     Icon(Icons.calendar_today, size: 18),
                                   ],
