@@ -285,7 +285,10 @@ class _SoulHomePageState extends State<SoulHomePage> {
               child: Column(
                 children: [
                   Padding(
-                    padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 16,
+                      vertical: 8,
+                    ),
                     child: SoulControls(
                       controller: _controller,
                       loading: loading,
@@ -329,11 +332,7 @@ class _SoulHomePageState extends State<SoulHomePage> {
                         );
 
                         String formatGoogleDate(DateTime dt) =>
-                            '${dt
-                                .toIso8601String()
-                                .replaceAll(RegExp(r'[:-]'), '')
-                                .split('.')
-                                .first}Z';
+                            '${dt.toIso8601String().replaceAll(RegExp(r'[:-]'), '').split('.').first}Z';
 
                         final url = Uri.parse(
                           'https://calendar.google.com/calendar/render?action=TEMPLATE'

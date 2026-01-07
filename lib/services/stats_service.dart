@@ -13,14 +13,18 @@ class StatsService {
         (await Future.value(response.body)).isNotEmpty
             ? Map<String, dynamic>.from(
                 await Future.value(
-                    // ignore: unnecessary_cast
-                    (await Future.value(response.body)) is String
-                        ? (await Future.value(response.body)).isNotEmpty
+                  // ignore: unnecessary_cast
+                  (await Future.value(response.body)) is String
+                      ? (await Future.value(response.body)).isNotEmpty
                             ? Map<String, dynamic>.from(
                                 await Future.value(
-                                    jsonDecode(response.body) as Map<String, dynamic>))
+                                  jsonDecode(response.body)
+                                      as Map<String, dynamic>,
+                                ),
+                              )
                             : {}
-                        : {})
+                      : {},
+                ),
               )
             : {},
       );
