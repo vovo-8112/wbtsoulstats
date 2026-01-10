@@ -149,7 +149,6 @@ class _SoulHomePageState extends State<SoulHomePage> {
       _controller.text = savedId;
       fetchSoulData(savedId);
 
-      // Додай це:
       final newUrl = Uri.base.replace(queryParameters: {'soulid': savedId});
       html.window.history.pushState(null, 'Soul Info', newUrl.toString());
       return;
