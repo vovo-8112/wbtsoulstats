@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import '../theme/app_colors.dart';
+import '../utils/formatters.dart';
+import '../utils/url_utils.dart';
 import 'soul_card.dart';
 
 class SoulCardsList extends StatelessWidget {
@@ -16,9 +18,6 @@ class SoulCardsList extends StatelessWidget {
     this.wbtPrice,
     this.timeLeft,
   });
-
-  String formatTokens(double amount) => amount.toStringAsFixed(2);
-  String formatPercent(double amount) => amount.toStringAsFixed(2);
 
   @override
   Widget build(BuildContext context) {
@@ -37,7 +36,7 @@ class SoulCardsList extends StatelessWidget {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text(
-                    '${formatTokens(holdAmount)} WBT',
+                    '${Formatters.formatTokens(holdAmount)} WBT',
                     style: const TextStyle(
                       fontSize: 20,
                       fontWeight: FontWeight.w600,
@@ -64,7 +63,7 @@ class SoulCardsList extends StatelessWidget {
               borderRadius: BorderRadius.circular(12),
             ),
             child: Text(
-              '${formatPercent(double.tryParse(soulData['rewardPercent'].toString()) ?? 0.0)}%',
+              '${Formatters.formatPercent(double.tryParse(soulData['rewardPercent'].toString()) ?? 0.0)}%',
               style: const TextStyle(fontWeight: FontWeight.w300),
             ),
           ),
@@ -77,7 +76,7 @@ class SoulCardsList extends StatelessWidget {
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Text(
-                "${formatTokens(double.tryParse(soulData['nextRewardAmount'].toString()) ?? 0.0)} WBT",
+                "${Formatters.formatTokens(double.tryParse(soulData['nextRewardAmount'].toString()) ?? 0.0)} WBT",
                 style: const TextStyle(
                   fontSize: 22,
                   fontWeight: FontWeight.w600,
@@ -100,7 +99,7 @@ class SoulCardsList extends StatelessWidget {
                 children: [
                   const SizedBox(width: 6),
                   Text(
-                    formatDuration(timeLeft),
+                    UrlUtils.formatDuration(timeLeft),
                     style: const TextStyle(
                       fontSize: 16,
                       fontWeight: FontWeight.w500,
@@ -114,18 +113,7 @@ class SoulCardsList extends StatelessWidget {
                 children: [
                   const SizedBox(width: 6),
                   Text(
-                    soulData['nextRewardStartAt'] != null
-                        ? (() {
-                            final dt = DateTime.tryParse(
-                              soulData['nextRewardStartAt'],
-                            )?.toLocal();
-                            if (dt != null) {
-                              return DateFormat('dd.MM.yyyy HH:mm').format(dt);
-                            } else {
-                              return 'Unknown';
-                            }
-                          })()
-                        : 'Unknown',
+                    UrlUtils.formatDate(soulData['nextRewardStartAt']),
                     style: const TextStyle(
                       fontSize: 14,
                       color: AppColors.textMuted,
@@ -152,7 +140,7 @@ class SoulCardsList extends StatelessWidget {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text(
-                    '${formatTokens(amount)} WBT',
+                    '${Formatters.formatTokens(amount)} WBT',
                     style: const TextStyle(
                       fontSize: 20,
                       fontWeight: FontWeight.w600,
@@ -189,7 +177,7 @@ class SoulCardsList extends StatelessWidget {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text(
-                    '${formatTokens(amount)} WBT',
+                    '${Formatters.formatTokens(amount)} WBT',
                     style: const TextStyle(
                       fontSize: 20,
                       fontWeight: FontWeight.w600,
@@ -224,7 +212,7 @@ class SoulCardsList extends StatelessWidget {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text(
-                    '${formatTokens(amount)} WBT',
+                    '${Formatters.formatTokens(amount)} WBT',
                     style: const TextStyle(
                       fontSize: 20,
                       fontWeight: FontWeight.w600,
@@ -247,24 +235,4 @@ class SoulCardsList extends StatelessWidget {
       ],
     );
   }
-}
-
-String formatDuration(Duration? d) {
-  if (d == null) return '--:--:--';
-
-  final days = d.inDays;
-  final hours = d.inHours % 24;
-  final minutes = d.inMinutes % 60;
-  final seconds = d.inSeconds % 60;
-
-  if (days > 0) {
-    return '${days}d '
-        '${hours.toString().padLeft(2, '0')}:'
-        '${minutes.toString().padLeft(2, '0')}:'
-        '${seconds.toString().padLeft(2, '0')}';
-  }
-
-  return '${hours.toString().padLeft(2, '0')}:'
-      '${minutes.toString().padLeft(2, '0')}:'
-      '${seconds.toString().padLeft(2, '0')}';
 }

@@ -2,21 +2,22 @@ import 'package:flutter/material.dart';
 import 'package:flutter/foundation.dart';
 import 'dart:async';
 // ignore: deprecated_member_use, avoid_web_libraries_in_flutter
-import 'dart:html' as html show window;
+import 'dart:html' as html if (dart.library.io) 'dart:io';
 
 import 'package:http/http.dart' as http;
-import 'package:intl/intl.dart';
-import 'package:shared_preferences/shared_preferences.dart';
 import 'package:url_launcher/url_launcher.dart';
 
 import '../theme/app_colors.dart';
 import '../services/wbt_price.dart';
 import '../services/soul_service.dart';
 import '../services/stats_service.dart';
+import '../services/storage_service.dart';
 import '../utils/reward_calculator.dart';
+import '../utils/formatters.dart';
+import '../utils/url_utils.dart';
+import '../utils/constants.dart';
 import '../widgets/soul_cards_list.dart';
 import '../widgets/shimmer_placeholder_list.dart';
-import '../web_local_storage.dart' if (dart.library.io) '../noop.dart';
 import '../widgets/soul_top_bar.dart';
 import '../widgets/soul_controls.dart';
 
@@ -28,14 +29,16 @@ class SoulHomePage extends StatefulWidget {
 }
 
 class _SoulHomePageState extends State<SoulHomePage> {
-  final TextEditingController _controller = TextEditingController(text: "1");
+  final TextEditingController _controller = TextEditingController(
+    text: AppConstants.defaultSoulId,
+  );
   Map<String, dynamic>? soulData;
   Map<String, String>? futureRewards;
   bool loading = false;
   double? wbtPrice;
-  final WBTPrice priceService = WBTPrice();
-  final SoulService soulService = SoulService();
-  final StatsService statsService = StatsService();
+  final WBTPrice _priceService = WBTPrice();
+  final SoulService _soulService = SoulService();
+  final StatsService _statsService = StatsService();
   Timer? _countdownTimer;
   Duration? _timeLeft;
   Map<String, dynamic>? statsData;
@@ -57,16 +60,6 @@ class _SoulHomePageState extends State<SoulHomePage> {
     }
 
     loadSavedSoulId();
-  }
-
-  String formatDate(String? isoDate) {
-    if (isoDate == null) return 'Unknown date';
-    try {
-      final date = DateTime.parse(isoDate).toLocal();
-      return DateFormat('dd.MM.yyyy HH:mm').format(date);
-    } catch (_) {
-      return 'Invalid date format';
-    }
   }
 
   void startCountdown(String? isoDate) {
@@ -96,8 +89,8 @@ class _SoulHomePageState extends State<SoulHomePage> {
     setState(() => loading = true);
     final client = http.Client();
     try {
-      final data = await soulService.fetchSoul(soulId, client);
-      final price = await priceService.fetchPrice(client);
+      final data = await _soulService.fetchSoul(soulId, client);
+      final price = await _priceService.fetchPrice(client);
       soulData = data;
       wbtPrice = price;
       startCountdown(soulData!['nextRewardStartAt']);
@@ -108,19 +101,21 @@ class _SoulHomePageState extends State<SoulHomePage> {
             double.tryParse(soulData!['rewardPercent'].toString()) ?? 0.0;
         futureRewards = {
           'In 3 months':
-              "${formatTokens(RewardCalculator.calculateFuture(currentAmount: holdAmount, rewardPercent: rewardPercent, months: 3))} WBT",
+              "${Formatters.formatTokens(RewardCalculator.calculateFuture(currentAmount: holdAmount, rewardPercent: rewardPercent, months: 3))} WBT",
           'In 6 months':
-              "${formatTokens(RewardCalculator.calculateFuture(currentAmount: holdAmount, rewardPercent: rewardPercent, months: 6))} WBT",
+              "${Formatters.formatTokens(RewardCalculator.calculateFuture(currentAmount: holdAmount, rewardPercent: rewardPercent, months: 6))} WBT",
           'In 1 year':
-              "${formatTokens(RewardCalculator.calculateFuture(currentAmount: holdAmount, rewardPercent: rewardPercent, months: 12))} WBT",
+              "${Formatters.formatTokens(RewardCalculator.calculateFuture(currentAmount: holdAmount, rewardPercent: rewardPercent, months: 12))} WBT",
         };
         loading = false;
       });
     } catch (e) {
       setState(() => loading = false);
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(SnackBar(content: Text('❌ Error loading data: $e')));
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('❌ Error loading data: $e')),
+        );
+      }
     } finally {
       client.close();
     }
@@ -133,30 +128,17 @@ class _SoulHomePageState extends State<SoulHomePage> {
   }
 
   Future<void> saveSoulId(String soulId) async {
-    if (kIsWeb) {
-      setItem('saved_soul_id', soulId);
-      return;
-    }
     try {
-      final prefs = await SharedPreferences.getInstance();
-      await prefs.setString('saved_soul_id', soulId);
-    } catch (_) {}
+      await StorageService.setString(AppConstants.savedSoulIdKey, soulId);
+    } catch (_) {
+      // Silently handle storage errors
+    }
   }
 
   Future<void> loadSavedSoulId() async {
-    if (kIsWeb) {
-      final savedId = getItem('saved_soul_id') ?? "1";
-      _controller.text = savedId;
-      fetchSoulData(savedId);
-
-      final newUrl = Uri.base.replace(queryParameters: {'soulid': savedId});
-      html.window.history.pushState(null, 'Soul Info', newUrl.toString());
-      return;
-    }
-
     try {
-      final prefs = await SharedPreferences.getInstance();
-      final savedId = prefs.getString('saved_soul_id') ?? "1";
+      final savedId = await StorageService.getString(AppConstants.savedSoulIdKey) ??
+          AppConstants.defaultSoulId;
       _controller.text = savedId;
       fetchSoulData(savedId);
 
@@ -165,19 +147,21 @@ class _SoulHomePageState extends State<SoulHomePage> {
         html.window.history.pushState(null, 'Soul Info', newUrl.toString());
       }
     } catch (_) {
-      _controller.text = "1";
-      fetchSoulData("1");
+      _controller.text = AppConstants.defaultSoulId;
+      fetchSoulData(AppConstants.defaultSoulId);
     }
   }
 
-  void openUrl(String url) async {
+  Future<void> openUrl(String url) async {
     final uri = Uri.parse(url);
     if (await canLaunchUrl(uri)) {
       await launchUrl(uri);
     } else {
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(SnackBar(content: Text('❌ Cannot open $url')));
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('❌ Cannot open $url')),
+        );
+      }
     }
   }
 
@@ -271,9 +255,9 @@ class _SoulHomePageState extends State<SoulHomePage> {
               wbtPrice: wbtPrice,
               statsLoading: statsLoading,
               statsData: statsData,
-              onOpenInfo: () => openUrl('https://whitestat.com/'),
-              onStatsLoaded: (data) => setState(() => statsData = data),
-              onStatsLoading: (v) => setState(() => statsLoading = v),
+                      onOpenInfo: () => openUrl(AppConstants.whiteStatUrl),
+                      onStatsLoaded: (data) => setState(() => statsData = data),
+                      onStatsLoading: (v) => setState(() => statsLoading = v),
             ),
           ],
         ),
@@ -308,40 +292,31 @@ class _SoulHomePageState extends State<SoulHomePage> {
                       },
                       onExplorerPressed: () {
                         final soulId = _controller.text;
-                        openUrl('https://explorer.whitechain.io/soul/$soulId');
+                        openUrl(UrlUtils.getSoulExplorerUrl(soulId));
                       },
                       onClaimPressed: () {
-                        openUrl(
-                          'https://explorer.whitechain.io/address/0x0000000000000000000000000000000000001001/contract/write#claim',
-                        );
+                        openUrl(AppConstants.claimContractUrl);
                       },
                       onAddCalendarPressed: () {
-                        final title = Uri.encodeComponent("Next Soul Reward");
-                        final details = Uri.encodeComponent(
-                          "Reward of ${formatTokens(double.tryParse(soulData?['nextRewardAmount']?.toString() ?? '0.0') ?? 0.0)} WBT",
-                        );
-
-                        final startDateTime =
-                            DateTime.tryParse(
+                        final rewardAmount = double.tryParse(
+                              soulData?['nextRewardAmount']?.toString() ?? '0.0',
+                            ) ??
+                            0.0;
+                        final startDateTime = DateTime.tryParse(
                               soulData?['nextRewardStartAt'] ?? '',
                             )?.toUtc() ??
                             DateTime.now().toUtc();
-                        final endDateTime = startDateTime.add(
-                          const Duration(minutes: 5),
+
+                        final calendarUrl = UrlUtils.getCalendarUrl(
+                          startDateTime: startDateTime,
+                          rewardAmount: rewardAmount,
                         );
 
-                        String formatGoogleDate(DateTime dt) =>
-                            '${dt.toIso8601String().replaceAll(RegExp(r'[:-]'), '').split('.').first}Z';
-
-                        final url = Uri.parse(
-                          'https://calendar.google.com/calendar/render?action=TEMPLATE'
-                          '&text=$title'
-                          '&details=$details'
-                          '&dates=${formatGoogleDate(startDateTime)}/${formatGoogleDate(endDateTime)}'
-                          '&location=Whitechain',
-                        );
-
-                        html.window.open(url.toString(), '_blank');
+                        if (kIsWeb) {
+                          html.window.open(calendarUrl, '_blank');
+                        } else {
+                          openUrl(calendarUrl);
+                        }
                       },
                     ),
                   ),
@@ -374,12 +349,4 @@ class _SoulHomePageState extends State<SoulHomePage> {
       ),
     );
   }
-}
-
-String formatTokens(double amount) {
-  return amount.toStringAsFixed(2);
-}
-
-String formatPercent(double amount) {
-  return amount.toStringAsFixed(2);
 }
