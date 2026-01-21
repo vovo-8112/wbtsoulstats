@@ -64,16 +64,19 @@ class SoulControls extends StatelessWidget {
                   style: ElevatedButton.styleFrom(
                     foregroundColor: AppColors.textButton,
                     textStyle: const TextStyle(
-                      fontSize: 14,
+                      fontSize: 12,
                       fontWeight: FontWeight.w600,
                     ),
                     padding: const EdgeInsets.symmetric(
                       vertical: 12,
-                      horizontal: 16,
+                      horizontal: 8,
                     ),
                   ),
                   onPressed: onExplorerPressed,
-                  child: const Text('Explorer 📁'),
+                  child: FittedBox(
+                    fit: BoxFit.scaleDown,
+                    child: const Text('Explorer 📁'),
+                  ),
                 ),
               ),
               const SizedBox(width: 10),
@@ -82,16 +85,19 @@ class SoulControls extends StatelessWidget {
                   style: ElevatedButton.styleFrom(
                     foregroundColor: AppColors.textButton,
                     textStyle: const TextStyle(
-                      fontSize: 14,
+                      fontSize: 12,
                       fontWeight: FontWeight.w600,
                     ),
                     padding: const EdgeInsets.symmetric(
                       vertical: 12,
-                      horizontal: 16,
+                      horizontal: 8,
                     ),
                   ),
                   onPressed: onClaimPressed,
-                  child: const Text('Claim 💸'),
+                  child: FittedBox(
+                    fit: BoxFit.scaleDown,
+                    child: const Text('Claim 💸'),
+                  ),
                 ),
               ),
               const SizedBox(width: 10),
@@ -100,18 +106,18 @@ class SoulControls extends StatelessWidget {
                   style: ElevatedButton.styleFrom(
                     foregroundColor: AppColors.textButton,
                     textStyle: const TextStyle(
-                      fontSize: 14,
+                      fontSize: 12,
                       fontWeight: FontWeight.w600,
                     ),
                     padding: const EdgeInsets.symmetric(
                       vertical: 12,
-                      horizontal: 16,
+                      horizontal: 8,
                     ),
                   ),
                   onPressed: onAddCalendarPressed,
-                  child: Row(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: const [Text('Add 📅')],
+                  child: FittedBox(
+                    fit: BoxFit.scaleDown,
+                    child: const Text('Add 📅'),
                   ),
                 ),
               ),
