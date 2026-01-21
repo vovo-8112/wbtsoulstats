@@ -1,0 +1,352 @@
+import 'package:flutter/material.dart';
+import 'package:flutter/foundation.dart';
+import 'dart:async';
+// ignore: deprecated_member_use, avoid_web_libraries_in_flutter
+import 'dart:html' as html if (dart.library.io) 'dart:io';
+
+import 'package:http/http.dart' as http;
+import 'package:url_launcher/url_launcher.dart';
+
+import '../theme/app_colors.dart';
+import '../services/wbt_price.dart';
+import '../services/soul_service.dart';
+import '../services/stats_service.dart';
+import '../services/storage_service.dart';
+import '../utils/reward_calculator.dart';
+import '../utils/formatters.dart';
+import '../utils/url_utils.dart';
+import '../utils/constants.dart';
+import '../widgets/soul_cards_list.dart';
+import '../widgets/shimmer_placeholder_list.dart';
+import '../widgets/soul_top_bar.dart';
+import '../widgets/soul_controls.dart';
+
+class SoulHomePage extends StatefulWidget {
+  const SoulHomePage({super.key});
+
+  @override
+  State<SoulHomePage> createState() => _SoulHomePageState();
+}
+
+class _SoulHomePageState extends State<SoulHomePage> {
+  final TextEditingController _controller = TextEditingController(
+    text: AppConstants.defaultSoulId,
+  );
+  Map<String, dynamic>? soulData;
+  Map<String, String>? futureRewards;
+  bool loading = false;
+  double? wbtPrice;
+  final WBTPrice _priceService = WBTPrice();
+  final SoulService _soulService = SoulService();
+  final StatsService _statsService = StatsService();
+  Timer? _countdownTimer;
+  Duration? _timeLeft;
+  Map<String, dynamic>? statsData;
+  bool statsLoading = false;
+
+  @override
+  void initState() {
+    super.initState();
+
+    if (kIsWeb) {
+      final uri = Uri.base;
+      final soulIdParam = uri.queryParameters['soulid'];
+      if (soulIdParam != null && soulIdParam.isNotEmpty) {
+        _controller.text = soulIdParam;
+        fetchSoulData(soulIdParam);
+        saveSoulId(soulIdParam);
+        return;
+      }
+    }
+
+    loadSavedSoulId();
+  }
+
+  void startCountdown(String? isoDate) {
+    _countdownTimer?.cancel();
+    if (isoDate == null) return;
+
+    final target = DateTime.tryParse(isoDate)?.toUtc();
+    if (target == null) return;
+
+    void tick() {
+      final now = DateTime.now().toUtc();
+      final diff = target.difference(now);
+
+      if (diff.isNegative) {
+        _countdownTimer?.cancel();
+        setState(() => _timeLeft = Duration.zero);
+      } else {
+        setState(() => _timeLeft = diff);
+      }
+    }
+
+    tick();
+    _countdownTimer = Timer.periodic(const Duration(seconds: 1), (_) => tick());
+  }
+
+  Future<void> fetchSoulData(String soulId) async {
+    setState(() => loading = true);
+    final client = http.Client();
+    try {
+      final data = await _soulService.fetchSoul(soulId, client);
+      final price = await _priceService.fetchPrice(client);
+      soulData = data;
+      wbtPrice = price;
+      startCountdown(soulData!['nextRewardStartAt']);
+      setState(() {
+        final holdAmount =
+            double.tryParse(soulData!['holdAmount'].toString()) ?? 0.0;
+        final rewardPercent =
+            double.tryParse(soulData!['rewardPercent'].toString()) ?? 0.0;
+        futureRewards = {
+          'In 3 months':
+              "${Formatters.formatTokens(RewardCalculator.calculateFuture(currentAmount: holdAmount, rewardPercent: rewardPercent, months: 3))} WBT",
+          'In 6 months':
+              "${Formatters.formatTokens(RewardCalculator.calculateFuture(currentAmount: holdAmount, rewardPercent: rewardPercent, months: 6))} WBT",
+          'In 1 year':
+              "${Formatters.formatTokens(RewardCalculator.calculateFuture(currentAmount: holdAmount, rewardPercent: rewardPercent, months: 12))} WBT",
+        };
+        loading = false;
+      });
+    } catch (e) {
+      setState(() => loading = false);
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('❌ Error loading data: $e')),
+        );
+      }
+    } finally {
+      client.close();
+    }
+  }
+
+  @override
+  void dispose() {
+    _countdownTimer?.cancel();
+    super.dispose();
+  }
+
+  Future<void> saveSoulId(String soulId) async {
+    try {
+      await StorageService.setString(AppConstants.savedSoulIdKey, soulId);
+    } catch (_) {
+      // Silently handle storage errors
+    }
+  }
+
+  Future<void> loadSavedSoulId() async {
+    try {
+      final savedId = await StorageService.getString(AppConstants.savedSoulIdKey) ??
+          AppConstants.defaultSoulId;
+      _controller.text = savedId;
+      fetchSoulData(savedId);
+
+      if (kIsWeb) {
+        final newUrl = Uri.base.replace(queryParameters: {'soulid': savedId});
+        html.window.history.pushState(null, 'Soul Info', newUrl.toString());
+      }
+    } catch (_) {
+      _controller.text = AppConstants.defaultSoulId;
+      fetchSoulData(AppConstants.defaultSoulId);
+    }
+  }
+
+  Future<void> openUrl(String url) async {
+    final uri = Uri.parse(url);
+    if (await canLaunchUrl(uri)) {
+      await launchUrl(uri);
+    } else {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('❌ Cannot open $url')),
+        );
+      }
+    }
+  }
+
+  Widget buildCard(String title, String value) {
+    double? usdValue;
+    if (wbtPrice != null && value.contains('WBT')) {
+      final match = RegExp(r'([\d.]+)').firstMatch(value);
+      if (match != null) {
+        final amount = double.tryParse(match.group(1)!);
+        if (amount != null) usdValue = amount * wbtPrice!;
+      }
+    }
+
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(16, 8, 16, 12),
+      child: Container(
+        padding: const EdgeInsets.all(16),
+        decoration: BoxDecoration(
+          color: AppColors.bg,
+          borderRadius: BorderRadius.circular(16),
+          border: Border.all(color: AppColors.borderMuted),
+        ),
+        child: Row(
+          children: [
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    title,
+                    style: const TextStyle(
+                      color: AppColors.textMuted,
+                      fontSize: 13,
+                    ),
+                  ),
+                  const SizedBox(height: 5),
+                  Text(
+                    value,
+                    style: const TextStyle(
+                      fontSize: 20,
+                      fontWeight: FontWeight.w600,
+                      color: AppColors.text,
+                    ),
+                  ),
+                  if (usdValue != null) ...[
+                    const SizedBox(height: 4),
+                    Text(
+                      "\$${usdValue.toStringAsFixed(2)}",
+                      style: const TextStyle(
+                        fontSize: 13,
+                        color: AppColors.textMuted,
+                      ),
+                    ),
+                  ],
+                ],
+              ),
+            ),
+            if (usdValue != null)
+              Container(
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 12,
+                  vertical: 8,
+                ),
+                decoration: BoxDecoration(
+                  color: AppColors.bgLight,
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: Text(
+                  "\$${usdValue.toStringAsFixed(2)}",
+                  style: const TextStyle(fontWeight: FontWeight.w600),
+                ),
+              ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return GestureDetector(
+      onTap: () => FocusScope.of(context).unfocus(),
+      behavior: HitTestBehavior.opaque,
+      child: Scaffold(
+        appBar: AppBar(
+          backgroundColor: AppColors.bgDark,
+          elevation: 0,
+          title: Container(), // порожній заголовок
+          actions: [
+            SoulTopBar(
+              wbtPrice: wbtPrice,
+              statsLoading: statsLoading,
+              statsData: statsData,
+                      onOpenInfo: () => openUrl(AppConstants.whiteStatUrl),
+                      onStatsLoaded: (data) => setState(() => statsData = data),
+                      onStatsLoading: (v) => setState(() => statsLoading = v),
+            ),
+          ],
+        ),
+        body: SafeArea(
+          child: Center(
+            child: ConstrainedBox(
+              constraints: const BoxConstraints(maxWidth: 1100),
+              child: Column(
+                children: [
+                  Padding(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 16,
+                      vertical: 8,
+                    ),
+                    child: SoulControls(
+                      controller: _controller,
+                      loading: loading,
+                      onLoadPressed: () {
+                        FocusScope.of(context).unfocus();
+                        saveSoulId(_controller.text);
+                        fetchSoulData(_controller.text);
+                        if (kIsWeb) {
+                          final newUrl = Uri.base.replace(
+                            queryParameters: {'soulid': _controller.text},
+                          );
+                          html.window.history.pushState(
+                            null,
+                            'Soul Info',
+                            newUrl.toString(),
+                          );
+                        }
+                      },
+                      onExplorerPressed: () {
+                        final soulId = _controller.text;
+                        openUrl(UrlUtils.getSoulExplorerUrl(soulId));
+                      },
+                      onClaimPressed: () {
+                        openUrl(AppConstants.claimContractUrl);
+                      },
+                      onAddCalendarPressed: () {
+                        final rewardAmount = double.tryParse(
+                              soulData?['nextRewardAmount']?.toString() ?? '0.0',
+                            ) ??
+                            0.0;
+                        final startDateTime = DateTime.tryParse(
+                              soulData?['nextRewardStartAt'] ?? '',
+                            )?.toUtc() ??
+                            DateTime.now().toUtc();
+
+                        final calendarUrl = UrlUtils.getCalendarUrl(
+                          startDateTime: startDateTime,
+                          rewardAmount: rewardAmount,
+                        );
+
+                        if (kIsWeb) {
+                          html.window.open(calendarUrl, '_blank');
+                        } else {
+                          openUrl(calendarUrl);
+                        }
+                      },
+                    ),
+                  ),
+                  if (loading)
+                    const Expanded(
+                      child: Center(child: ShimmerPlaceholderList()),
+                    )
+                  else if (soulData != null)
+                    Expanded(
+                      child: Padding(
+                        padding: const EdgeInsets.symmetric(horizontal: 16),
+                        child: ConstrainedBox(
+                          constraints: const BoxConstraints(maxWidth: 1100),
+                          child: SoulCardsList(
+                            soulData: soulData!,
+                            futureRewards: futureRewards,
+                            wbtPrice: wbtPrice,
+                            timeLeft: _timeLeft,
+                          ),
+                        ),
+                      ),
+                    )
+                  else
+                    const Expanded(child: Center(child: Text('No data found'))),
+                ],
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}

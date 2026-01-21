@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/foundation.dart';
 import '../theme/app_colors.dart';
 
 class StatsDialog extends StatelessWidget {
@@ -29,8 +30,49 @@ class StatsDialog extends StatelessWidget {
     return value.toString();
   }
 
-  Widget statsRow(String title, dynamic value, dynamic day, dynamic week, dynamic month) {
+  Widget statsRow(BuildContext context, String title, dynamic value, dynamic day, dynamic week, dynamic month) {
     String main = _formatValue(value);
+    final isMobile = MediaQuery.of(context).size.width < 600;
+    final fontSize = isMobile ? 10.0 : 12.0;
+    
+    if (isMobile) {
+      // Vertical layout for mobile
+      return Padding(
+        padding: const EdgeInsets.symmetric(vertical: 8.0, horizontal: 4.0),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              title,
+              style: TextStyle(
+                fontWeight: FontWeight.w600,
+                fontSize: fontSize + 1,
+              ),
+            ),
+            const SizedBox(height: 4),
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Expanded(
+                  child: _buildMobileCell('Value', main, fontSize, isBold: true),
+                ),
+                Expanded(
+                  child: _buildMobileCell('Day', _formatValue(day), fontSize, icon: day),
+                ),
+                Expanded(
+                  child: _buildMobileCell('Week', _formatValue(week), fontSize, icon: week),
+                ),
+                Expanded(
+                  child: _buildMobileCell('Month', _formatValue(month), fontSize, icon: month),
+                ),
+              ],
+            ),
+          ],
+        ),
+      );
+    }
+    
+    // Horizontal layout for desktop
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 2.0, horizontal: 4.0),
       child: Row(
@@ -42,7 +84,10 @@ class StatsDialog extends StatelessWidget {
               padding: const EdgeInsets.only(right: 4.0),
               child: Text(
                 title,
-                style: const TextStyle(fontWeight: FontWeight.w500),
+                style: TextStyle(
+                  fontWeight: FontWeight.w500,
+                  fontSize: fontSize,
+                ),
                 textAlign: TextAlign.left,
                 softWrap: true,
               ),
@@ -54,7 +99,10 @@ class StatsDialog extends StatelessWidget {
               padding: const EdgeInsets.symmetric(horizontal: 2.0),
               child: Text(
                 main,
-                style: const TextStyle(fontWeight: FontWeight.w600),
+                style: TextStyle(
+                  fontWeight: FontWeight.w600,
+                  fontSize: fontSize,
+                ),
                 textAlign: TextAlign.right,
                 softWrap: true,
               ),
@@ -71,6 +119,7 @@ class StatsDialog extends StatelessWidget {
                     style: TextStyle(
                       color: AppColors.textMuted,
                       fontWeight: FontWeight.w500,
+                      fontSize: fontSize,
                     ),
                     textAlign: TextAlign.right,
                     softWrap: true,
@@ -92,6 +141,7 @@ class StatsDialog extends StatelessWidget {
                     style: TextStyle(
                       color: AppColors.textMuted,
                       fontWeight: FontWeight.w500,
+                      fontSize: fontSize,
                     ),
                     textAlign: TextAlign.right,
                     softWrap: true,
@@ -113,6 +163,7 @@ class StatsDialog extends StatelessWidget {
                     style: TextStyle(
                       color: AppColors.textMuted,
                       fontWeight: FontWeight.w500,
+                      fontSize: fontSize,
                     ),
                     textAlign: TextAlign.right,
                     softWrap: true,
@@ -128,25 +179,116 @@ class StatsDialog extends StatelessWidget {
     );
   }
 
+  Widget _buildMobileCell(String label, String value, double fontSize, {bool isBold = false, dynamic icon}) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.center,
+      children: [
+        Text(
+          label,
+          style: TextStyle(
+            fontSize: fontSize - 1,
+            color: AppColors.textMuted,
+            fontWeight: FontWeight.w500,
+          ),
+        ),
+        const SizedBox(height: 2),
+        Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Flexible(
+              child: Text(
+                value,
+                style: TextStyle(
+                  fontSize: fontSize,
+                  fontWeight: isBold ? FontWeight.w600 : FontWeight.w500,
+                  color: isBold ? AppColors.text : AppColors.textMuted,
+                ),
+                textAlign: TextAlign.center,
+                overflow: TextOverflow.ellipsis,
+              ),
+            ),
+            if (icon != null) _deltaIcon(icon),
+          ],
+        ),
+      ],
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
+    final isMobile = MediaQuery.of(context).size.width < 600;
+    final fontSize = isMobile ? 10.0 : 12.0;
+    
     return AlertDialog(
       title: const Text('Soul Stats'),
+      contentPadding: EdgeInsets.all(isMobile ? 12.0 : 24.0),
       content: SingleChildScrollView(
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Row(
-              children: const [
-                Expanded(flex: 4, child: Text("Name", style: TextStyle(fontWeight: FontWeight.bold))),
-                Expanded(flex: 3, child: Text("Value", style: TextStyle(fontWeight: FontWeight.bold), textAlign: TextAlign.right)),
-                Expanded(flex: 3, child: Text("Day", style: TextStyle(fontWeight: FontWeight.bold), textAlign: TextAlign.right)),
-                Expanded(flex: 3, child: Text("Week", style: TextStyle(fontWeight: FontWeight.bold), textAlign: TextAlign.right)),
-                Expanded(flex: 3, child: Text("Month", style: TextStyle(fontWeight: FontWeight.bold), textAlign: TextAlign.right)),
-              ],
-            ),
-            const Divider(),
+            if (!isMobile) ...[
+              Row(
+                children: [
+                  Expanded(
+                    flex: 4,
+                    child: Text(
+                      "Name",
+                      style: TextStyle(
+                        fontWeight: FontWeight.bold,
+                        fontSize: fontSize,
+                      ),
+                    ),
+                  ),
+                  Expanded(
+                    flex: 3,
+                    child: Text(
+                      "Value",
+                      style: TextStyle(
+                        fontWeight: FontWeight.bold,
+                        fontSize: fontSize,
+                      ),
+                      textAlign: TextAlign.right,
+                    ),
+                  ),
+                  Expanded(
+                    flex: 3,
+                    child: Text(
+                      "Day",
+                      style: TextStyle(
+                        fontWeight: FontWeight.bold,
+                        fontSize: fontSize,
+                      ),
+                      textAlign: TextAlign.right,
+                    ),
+                  ),
+                  Expanded(
+                    flex: 3,
+                    child: Text(
+                      "Week",
+                      style: TextStyle(
+                        fontWeight: FontWeight.bold,
+                        fontSize: fontSize,
+                      ),
+                      textAlign: TextAlign.right,
+                    ),
+                  ),
+                  Expanded(
+                    flex: 3,
+                    child: Text(
+                      "Month",
+                      style: TextStyle(
+                        fontWeight: FontWeight.bold,
+                        fontSize: fontSize,
+                      ),
+                      textAlign: TextAlign.right,
+                    ),
+                  ),
+                ],
+              ),
+              const Divider(),
+            ],
             statsRow(
+              context,
               "Total Souls",
               stats['soulsTotal']?['value'] ?? 0,
               stats['soulsTotal']?['differences']?['day'],
@@ -154,6 +296,7 @@ class StatsDialog extends StatelessWidget {
               stats['soulsTotal']?['differences']?['month'],
             ),
             statsRow(
+              context,
               "Holder Souls (10+ WBT)",
               stats['soulsHolder']?['value'] ?? 0,
               stats['soulsHolder']?['differences']?['day'],
@@ -161,6 +304,7 @@ class StatsDialog extends StatelessWidget {
               stats['soulsHolder']?['differences']?['month'],
             ),
             statsRow(
+              context,
               "Zombie Souls (<10 WBT)",
               stats['soulsZombie']?['value'] ?? 0,
               stats['soulsZombie']?['differences']?['day'],
@@ -168,6 +312,7 @@ class StatsDialog extends StatelessWidget {
               stats['soulsZombie']?['differences']?['month'],
             ),
             statsRow(
+              context,
               "Launchpad Souls (200+ WBT)",
               stats['soulsLaunchpadReady']?['value'] ?? 0,
               stats['soulsLaunchpadReady']?['differences']?['day'],
@@ -175,6 +320,7 @@ class StatsDialog extends StatelessWidget {
               stats['soulsLaunchpadReady']?['differences']?['month'],
             ),
             statsRow(
+              context,
               "Total Hold Amount, WBT",
               stats['soulsHoldAmount']?['value'] ?? 0.0,
               stats['soulsHoldAmount']?['differences']?['day'],
@@ -182,6 +328,7 @@ class StatsDialog extends StatelessWidget {
               stats['soulsHoldAmount']?['differences']?['month'],
             ),
             statsRow(
+              context,
               "Soul Drop Balance, WBT",
               stats['soulsDropAmount']?['value'] ?? 0.0,
               stats['soulsDropAmount']?['differences']?['day'],
