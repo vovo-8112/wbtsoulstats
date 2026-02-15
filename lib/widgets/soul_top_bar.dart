@@ -77,7 +77,7 @@ class SoulTopBar extends StatelessWidget {
                   )
                 : const Text('Show Stats'),
           ),
-          const SizedBox(width: 14),
+          const SizedBox(width: 10),
           Container(
             padding: const EdgeInsets.symmetric(horizontal: 13, vertical: 7),
             decoration: BoxDecoration(
