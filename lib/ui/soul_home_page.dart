@@ -46,6 +46,9 @@ class _SoulHomePageState extends State<SoulHomePage> {
   DateTime? _lastUpdatedAt;
   String? _lastError;
   List<String> _watchlist = const [];
+  String? _draggingWatchId;
+  int? _lastWatchHoverTargetIndex;
+  bool _watchlistOrderDirty = false;
   List<String> _tileOrder = List<String>.from(SoulCardsList.defaultTileOrder);
 
   @override
@@ -221,6 +224,40 @@ class _SoulHomePageState extends State<SoulHomePage> {
       () => _watchlist = _watchlist.where((id) => id != soulId).toList(),
     );
     await _persistWatchlist();
+  }
+
+  void _previewReorderWatchlist(String fromId, int insertionIndex) {
+    final fromIndex = _watchlist.indexOf(fromId);
+    if (fromIndex < 0) return;
+    if (insertionIndex < 0 || insertionIndex > _watchlist.length) return;
+
+    var targetIndex = insertionIndex;
+    if (targetIndex > fromIndex) {
+      targetIndex -= 1;
+    }
+    if (targetIndex == fromIndex) return;
+    if (_lastWatchHoverTargetIndex == targetIndex) return;
+
+    setState(() {
+      final updated = List<String>.from(_watchlist);
+      final item = updated.removeAt(fromIndex);
+      updated.insert(targetIndex, item);
+      _watchlist = updated;
+      _lastWatchHoverTargetIndex = targetIndex;
+      _watchlistOrderDirty = true;
+    });
+  }
+
+  Widget _buildWatchDropZone(int insertionIndex) {
+    return DragTarget<String>(
+      key: ValueKey('watch-gap-$insertionIndex'),
+      onWillAcceptWithDetails: (details) => _draggingWatchId != null,
+      onMove: (details) =>
+          _previewReorderWatchlist(details.data, insertionIndex),
+      builder: (context, candidateData, rejectedData) {
+        return SizedBox(width: _draggingWatchId != null ? 16 : 6, height: 36);
+      },
+    );
   }
 
   Future<void> openFromWatchlist(String soulId) async {
@@ -454,47 +491,131 @@ class _SoulHomePageState extends State<SoulHomePage> {
                           right: 16,
                           top: 10,
                         ),
-                        child: Align(
-                          alignment: Alignment.centerLeft,
-                          child: SingleChildScrollView(
-                            scrollDirection: Axis.horizontal,
-                            child: Row(
-                              children: _watchlist.map((id) {
-                                final isSelected =
-                                    id == _controller.text.trim();
-                                return Padding(
-                                  padding: const EdgeInsets.only(right: 8),
-                                  child: InputChip(
-                                    selected: isSelected,
-                                    selectedColor: AppColors.primary.withValues(
-                                      alpha: 0.25,
+                        child: AnimatedContainer(
+                          duration: const Duration(milliseconds: 140),
+                          padding: const EdgeInsets.all(6),
+                          decoration: BoxDecoration(
+                            borderRadius: BorderRadius.circular(14),
+                            border: _draggingWatchId != null
+                                ? Border.all(
+                                    color: AppColors.primary.withValues(
+                                      alpha: 0.7,
                                     ),
-                                    backgroundColor: AppColors.bg,
-                                    side: const BorderSide(
-                                      color: AppColors.borderMuted,
-                                    ),
-                                    label: Text(
-                                      'Soul #$id',
-                                      style: TextStyle(
-                                        color: isSelected
-                                            ? AppColors.text
-                                            : AppColors.textMuted,
-                                        fontWeight: FontWeight.w600,
+                                  )
+                                : Border.all(color: Colors.transparent),
+                            color: _draggingWatchId != null
+                                ? AppColors.primary.withValues(alpha: 0.06)
+                                : Colors.transparent,
+                          ),
+                          child: Align(
+                            alignment: Alignment.centerLeft,
+                            child: SingleChildScrollView(
+                              scrollDirection: Axis.horizontal,
+                              child: Row(
+                                children: [
+                                  for (
+                                    var index = 0;
+                                    index <= _watchlist.length;
+                                    index++
+                                  ) ...[
+                                    _buildWatchDropZone(index),
+                                    if (index < _watchlist.length)
+                                      Builder(
+                                        builder: (context) {
+                                          final id = _watchlist[index];
+                                          final isSelected =
+                                              id == _controller.text.trim();
+                                          final isDragging =
+                                              _draggingWatchId == id;
+                                          final chip = InputChip(
+                                            selected: isSelected,
+                                            selectedColor: AppColors.primary
+                                                .withValues(alpha: 0.25),
+                                            backgroundColor: AppColors.bg,
+                                            side: const BorderSide(
+                                              color: AppColors.borderMuted,
+                                            ),
+                                            label: Text(
+                                              'Soul #$id',
+                                              style: TextStyle(
+                                                color: isSelected
+                                                    ? AppColors.text
+                                                    : AppColors.textMuted,
+                                                fontWeight: FontWeight.w600,
+                                              ),
+                                            ),
+                                            onPressed: () =>
+                                                openFromWatchlist(id),
+                                            onDeleted: () =>
+                                                removeFromWatchlist(id),
+                                            deleteIcon: Icon(
+                                              Icons.close,
+                                              size: 16,
+                                              color: isSelected
+                                                  ? AppColors.text
+                                                  : AppColors.textMuted,
+                                            ),
+                                            deleteButtonTooltipMessage:
+                                                'Remove',
+                                          );
+                                          return Padding(
+                                            padding: const EdgeInsets.only(
+                                              right: 8,
+                                            ),
+                                            child: LongPressDraggable<String>(
+                                              key: ValueKey(
+                                                'watch-draggable-$id',
+                                              ),
+                                              data: id,
+                                              feedback: Material(
+                                                color: Colors.transparent,
+                                                child: chip,
+                                              ),
+                                              dragAnchorStrategy:
+                                                  pointerDragAnchorStrategy,
+                                              onDragStarted: () => setState(() {
+                                                _draggingWatchId = id;
+                                                _lastWatchHoverTargetIndex =
+                                                    null;
+                                                _watchlistOrderDirty = false;
+                                              }),
+                                              onDraggableCanceled: (_, __) {
+                                                setState(() {
+                                                  _draggingWatchId = null;
+                                                  _lastWatchHoverTargetIndex =
+                                                      null;
+                                                });
+                                                if (_watchlistOrderDirty) {
+                                                  _persistWatchlist();
+                                                  _watchlistOrderDirty = false;
+                                                }
+                                              },
+                                              onDragEnd: (_) {
+                                                setState(() {
+                                                  _draggingWatchId = null;
+                                                  _lastWatchHoverTargetIndex =
+                                                      null;
+                                                });
+                                                if (_watchlistOrderDirty) {
+                                                  _persistWatchlist();
+                                                  _watchlistOrderDirty = false;
+                                                }
+                                              },
+                                              childWhenDragging: Opacity(
+                                                opacity: 0.35,
+                                                child: chip,
+                                              ),
+                                              child: Opacity(
+                                                opacity: isDragging ? 0.4 : 1.0,
+                                                child: chip,
+                                              ),
+                                            ),
+                                          );
+                                        },
                                       ),
-                                    ),
-                                    onPressed: () => openFromWatchlist(id),
-                                    onDeleted: () => removeFromWatchlist(id),
-                                    deleteIcon: Icon(
-                                      Icons.close,
-                                      size: 16,
-                                      color: isSelected
-                                          ? AppColors.text
-                                          : AppColors.textMuted,
-                                    ),
-                                    deleteButtonTooltipMessage: 'Remove',
-                                  ),
-                                );
-                              }).toList(),
+                                  ],
+                                ],
+                              ),
                             ),
                           ),
                         ),
