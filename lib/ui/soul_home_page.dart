@@ -10,7 +10,6 @@ import 'package:url_launcher/url_launcher.dart';
 import '../theme/app_colors.dart';
 import '../services/wbt_price.dart';
 import '../services/soul_service.dart';
-import '../services/stats_service.dart';
 import '../services/storage_service.dart';
 import '../utils/reward_calculator.dart';
 import '../utils/formatters.dart';
@@ -38,15 +37,18 @@ class _SoulHomePageState extends State<SoulHomePage> {
   double? wbtPrice;
   final WBTPrice _priceService = WBTPrice();
   final SoulService _soulService = SoulService();
-  final StatsService _statsService = StatsService();
   Timer? _countdownTimer;
   Duration? _timeLeft;
   Map<String, dynamic>? statsData;
   bool statsLoading = false;
+  DateTime? _lastUpdatedAt;
+  String? _lastError;
+  List<String> _watchlist = const [];
 
   @override
   void initState() {
     super.initState();
+    loadWatchlist();
 
     if (kIsWeb) {
       final uri = Uri.base;
@@ -107,10 +109,15 @@ class _SoulHomePageState extends State<SoulHomePage> {
           'In 1 year':
               "${Formatters.formatTokens(RewardCalculator.calculateFuture(currentAmount: holdAmount, rewardPercent: rewardPercent, months: 12))} WBT",
         };
+        _lastUpdatedAt = DateTime.now();
+        _lastError = null;
         loading = false;
       });
     } catch (e) {
-      setState(() => loading = false);
+      setState(() {
+        _lastError = e.toString();
+        loading = false;
+      });
       if (mounted) {
         ScaffoldMessenger.of(
           context,
@@ -142,15 +149,63 @@ class _SoulHomePageState extends State<SoulHomePage> {
           AppConstants.defaultSoulId;
       _controller.text = savedId;
       fetchSoulData(savedId);
-
-      if (kIsWeb) {
-        final newUrl = Uri.base.replace(queryParameters: {'soulid': savedId});
-        html.window.history.pushState(null, 'Soul Info', newUrl.toString());
-      }
+      _updateUrl(savedId);
     } catch (_) {
       _controller.text = AppConstants.defaultSoulId;
       fetchSoulData(AppConstants.defaultSoulId);
     }
+  }
+
+  Future<void> loadWatchlist() async {
+    try {
+      final ids =
+          await StorageService.getStringList(
+            AppConstants.watchlistSoulIdsKey,
+          ) ??
+          <String>[];
+      if (!mounted) return;
+      setState(
+        () => _watchlist = ids.where((id) => id.trim().isNotEmpty).toList(),
+      );
+    } catch (_) {
+      if (!mounted) return;
+      setState(() => _watchlist = const []);
+    }
+  }
+
+  Future<void> _persistWatchlist() async {
+    await StorageService.setStringList(
+      AppConstants.watchlistSoulIdsKey,
+      _watchlist,
+    );
+  }
+
+  Future<void> addCurrentToWatchlist() async {
+    final soulId = _controller.text.trim();
+    if (soulId.isEmpty) return;
+    if (_watchlist.contains(soulId)) return;
+    setState(() => _watchlist = [soulId, ..._watchlist]);
+    await _persistWatchlist();
+  }
+
+  Future<void> removeFromWatchlist(String soulId) async {
+    setState(
+      () => _watchlist = _watchlist.where((id) => id != soulId).toList(),
+    );
+    await _persistWatchlist();
+  }
+
+  Future<void> openFromWatchlist(String soulId) async {
+    _controller.text = soulId;
+    await saveSoulId(soulId);
+    _updateUrl(soulId);
+    await fetchSoulData(soulId);
+  }
+
+  void _updateUrl(String soulId) {
+    if (!kIsWeb) return;
+    final newUrl = Uri.base.replace(queryParameters: {'soulid': soulId});
+    html.window.history.pushState(null, 'Soul Info', newUrl.toString());
   }
 
   Future<void> openUrl(String url) async {
@@ -166,90 +221,17 @@ class _SoulHomePageState extends State<SoulHomePage> {
     }
   }
 
-  Widget buildCard(String title, String value) {
-    double? usdValue;
-    if (wbtPrice != null && value.contains('WBT')) {
-      final match = RegExp(r'([\d.]+)').firstMatch(value);
-      if (match != null) {
-        final amount = double.tryParse(match.group(1)!);
-        if (amount != null) usdValue = amount * wbtPrice!;
-      }
-    }
-
-    return Padding(
-      padding: const EdgeInsets.fromLTRB(16, 8, 16, 12),
-      child: Container(
-        padding: const EdgeInsets.all(16),
-        decoration: BoxDecoration(
-          color: AppColors.bg,
-          borderRadius: BorderRadius.circular(16),
-          border: Border.all(color: AppColors.borderMuted),
-        ),
-        child: Row(
-          children: [
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    title,
-                    style: const TextStyle(
-                      color: AppColors.textMuted,
-                      fontSize: 13,
-                    ),
-                  ),
-                  const SizedBox(height: 5),
-                  Text(
-                    value,
-                    style: const TextStyle(
-                      fontSize: 20,
-                      fontWeight: FontWeight.w600,
-                      color: AppColors.text,
-                    ),
-                  ),
-                  if (usdValue != null) ...[
-                    const SizedBox(height: 4),
-                    Text(
-                      "\$${usdValue.toStringAsFixed(2)}",
-                      style: const TextStyle(
-                        fontSize: 13,
-                        color: AppColors.textMuted,
-                      ),
-                    ),
-                  ],
-                ],
-              ),
-            ),
-            if (usdValue != null)
-              Container(
-                padding: const EdgeInsets.symmetric(
-                  horizontal: 12,
-                  vertical: 8,
-                ),
-                decoration: BoxDecoration(
-                  color: AppColors.bgLight,
-                  borderRadius: BorderRadius.circular(12),
-                ),
-                child: Text(
-                  "\$${usdValue.toStringAsFixed(2)}",
-                  style: const TextStyle(fontWeight: FontWeight.w600),
-                ),
-              ),
-          ],
-        ),
-      ),
-    );
-  }
-
   @override
   Widget build(BuildContext context) {
+    final updatedText = _lastUpdatedAt == null
+        ? 'No updates yet'
+        : 'Updated ${_lastUpdatedAt!.hour.toString().padLeft(2, '0')}:${_lastUpdatedAt!.minute.toString().padLeft(2, '0')}';
+
     return GestureDetector(
       onTap: () => FocusScope.of(context).unfocus(),
       behavior: HitTestBehavior.opaque,
       child: Scaffold(
         appBar: AppBar(
-          backgroundColor: AppColors.bgDark,
-          elevation: 0,
           scrolledUnderElevation: 0,
           toolbarHeight: 70,
           titleSpacing: 16,
@@ -265,92 +247,254 @@ class _SoulHomePageState extends State<SoulHomePage> {
           ),
         ),
         body: SafeArea(
-          child: Center(
-            child: ConstrainedBox(
-              constraints: const BoxConstraints(maxWidth: 1100),
-              child: Column(
-                children: [
-                  Padding(
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 16,
-                      vertical: 8,
-                    ),
-                    child: SoulControls(
-                      controller: _controller,
-                      loading: loading,
-                      onLoadPressed: () {
-                        FocusScope.of(context).unfocus();
-                        saveSoulId(_controller.text);
-                        fetchSoulData(_controller.text);
-                        if (kIsWeb) {
-                          final newUrl = Uri.base.replace(
-                            queryParameters: {'soulid': _controller.text},
-                          );
-                          html.window.history.pushState(
-                            null,
-                            'Soul Info',
-                            newUrl.toString(),
-                          );
-                        }
-                      },
-                      onExplorerPressed: () {
-                        final soulId = _controller.text;
-                        openUrl(UrlUtils.getSoulExplorerUrl(soulId));
-                      },
-                      onClaimPressed: () {
-                        openUrl(AppConstants.claimContractUrl);
-                      },
-                      onAddCalendarPressed: () {
-                        final rewardAmount =
-                            double.tryParse(
-                              soulData?['nextRewardAmount']?.toString() ??
-                                  '0.0',
-                            ) ??
-                            0.0;
-                        final startDateTime =
-                            DateTime.tryParse(
-                              soulData?['nextRewardStartAt'] ?? '',
-                            )?.toUtc() ??
-                            DateTime.now().toUtc();
-
-                        final calendarUrl = UrlUtils.getCalendarUrl(
-                          startDateTime: startDateTime,
-                          rewardAmount: rewardAmount,
-                        );
-
-                        if (kIsWeb) {
-                          html.window.open(calendarUrl, '_blank');
-                        } else {
-                          openUrl(calendarUrl);
-                        }
-                      },
+          child: Stack(
+            children: [
+              Positioned.fill(
+                child: DecoratedBox(
+                  decoration: const BoxDecoration(
+                    gradient: LinearGradient(
+                      begin: Alignment.topCenter,
+                      end: Alignment.bottomCenter,
+                      colors: [AppColors.gradientTop, AppColors.gradientBottom],
                     ),
                   ),
-                  if (loading)
-                    const Expanded(
-                      child: Center(child: ShimmerPlaceholderList()),
-                    )
-                  else if (soulData != null)
-                    Expanded(
-                      child: Padding(
-                        padding: const EdgeInsets.symmetric(horizontal: 16),
-                        child: ConstrainedBox(
-                          constraints: const BoxConstraints(maxWidth: 1100),
-                          child: SoulCardsList(
-                            soulData: soulData!,
-                            futureRewards: futureRewards,
-                            wbtPrice: wbtPrice,
-                            timeLeft: _timeLeft,
-                          ),
+                ),
+              ),
+              Positioned(
+                top: -90,
+                left: -70,
+                child: Container(
+                  width: 240,
+                  height: 240,
+                  decoration: BoxDecoration(
+                    shape: BoxShape.circle,
+                    color: AppColors.primary.withValues(alpha: 0.08),
+                  ),
+                ),
+              ),
+              Positioned(
+                right: -60,
+                bottom: 120,
+                child: Container(
+                  width: 200,
+                  height: 200,
+                  decoration: BoxDecoration(
+                    shape: BoxShape.circle,
+                    color: AppColors.secondary.withValues(alpha: 0.06),
+                  ),
+                ),
+              ),
+              Center(
+                child: ConstrainedBox(
+                  constraints: const BoxConstraints(maxWidth: 1100),
+                  child: Column(
+                    children: [
+                      Padding(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 16,
+                          vertical: 8,
+                        ),
+                        child: SoulControls(
+                          controller: _controller,
+                          loading: loading,
+                          onLoadPressed: () {
+                            FocusScope.of(context).unfocus();
+                            final soulId = _controller.text.trim();
+                            if (soulId.isEmpty) return;
+                            saveSoulId(soulId);
+                            _updateUrl(soulId);
+                            fetchSoulData(soulId);
+                          },
+                          onExplorerPressed: () {
+                            final soulId = _controller.text;
+                            openUrl(UrlUtils.getSoulExplorerUrl(soulId));
+                          },
+                          onClaimPressed: () {
+                            openUrl(AppConstants.claimContractUrl);
+                          },
+                          onAddCalendarPressed: () {
+                            final rewardAmount =
+                                double.tryParse(
+                                  soulData?['nextRewardAmount']?.toString() ??
+                                      '0.0',
+                                ) ??
+                                0.0;
+                            final startDateTime =
+                                DateTime.tryParse(
+                                  soulData?['nextRewardStartAt'] ?? '',
+                                )?.toUtc() ??
+                                DateTime.now().toUtc();
+
+                            final calendarUrl = UrlUtils.getCalendarUrl(
+                              startDateTime: startDateTime,
+                              rewardAmount: rewardAmount,
+                            );
+
+                            if (kIsWeb) {
+                              html.window.open(calendarUrl, '_blank');
+                            } else {
+                              openUrl(calendarUrl);
+                            }
+                          },
+                          onAddToWatchlistPressed: () {
+                            addCurrentToWatchlist();
+                          },
                         ),
                       ),
-                    )
-                  else
-                    const Expanded(child: Center(child: Text('No data found'))),
-                ],
+                      Padding(
+                        padding: const EdgeInsets.symmetric(horizontal: 16),
+                        child: Row(
+                          children: [
+                            const Icon(
+                              Icons.history_rounded,
+                              size: 14,
+                              color: AppColors.textMuted,
+                            ),
+                            const SizedBox(width: 6),
+                            Text(
+                              updatedText,
+                              style: const TextStyle(
+                                fontSize: 12,
+                                color: AppColors.textMuted,
+                              ),
+                            ),
+                            const Spacer(),
+                            if (_lastError != null)
+                              const Text(
+                                'Using previous available data',
+                                style: TextStyle(
+                                  fontSize: 12,
+                                  color: AppColors.warning,
+                                ),
+                              ),
+                          ],
+                        ),
+                      ),
+                      if (_watchlist.isNotEmpty)
+                        Padding(
+                          padding: const EdgeInsets.only(
+                            left: 16,
+                            right: 16,
+                            top: 10,
+                          ),
+                          child: Align(
+                            alignment: Alignment.centerLeft,
+                            child: SingleChildScrollView(
+                              scrollDirection: Axis.horizontal,
+                              child: Row(
+                                children: _watchlist.map((id) {
+                                  final isSelected =
+                                      id == _controller.text.trim();
+                                  return Padding(
+                                    padding: const EdgeInsets.only(right: 8),
+                                    child: InputChip(
+                                      selected: isSelected,
+                                      selectedColor: AppColors.primary
+                                          .withValues(alpha: 0.25),
+                                      backgroundColor: AppColors.bg,
+                                      side: const BorderSide(
+                                        color: AppColors.borderMuted,
+                                      ),
+                                      label: Text('Soul #$id'),
+                                      onPressed: () => openFromWatchlist(id),
+                                      onDeleted: () => removeFromWatchlist(id),
+                                      deleteIcon: const Icon(
+                                        Icons.close,
+                                        size: 16,
+                                      ),
+                                      deleteButtonTooltipMessage: 'Remove',
+                                    ),
+                                  );
+                                }).toList(),
+                              ),
+                            ),
+                          ),
+                        ),
+                      const SizedBox(height: 8),
+                      if (loading)
+                        const Expanded(
+                          child: Center(child: ShimmerPlaceholderList()),
+                        )
+                      else if (soulData != null)
+                        Expanded(
+                          child: RefreshIndicator(
+                            color: AppColors.primary,
+                            backgroundColor: AppColors.bg,
+                            onRefresh: () async {
+                              await fetchSoulData(_controller.text);
+                            },
+                            child: Padding(
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 16,
+                              ),
+                              child: SoulCardsList(
+                                soulData: soulData!,
+                                futureRewards: futureRewards,
+                                wbtPrice: wbtPrice,
+                                timeLeft: _timeLeft,
+                              ),
+                            ),
+                          ),
+                        )
+                      else
+                        Expanded(
+                          child: ListView(
+                            physics: const AlwaysScrollableScrollPhysics(),
+                            children: const [
+                              SizedBox(height: 72),
+                              _EmptyStateCard(),
+                            ],
+                          ),
+                        ),
+                    ],
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _EmptyStateCard extends StatelessWidget {
+  const _EmptyStateCard();
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 16),
+      child: Container(
+        padding: const EdgeInsets.all(24),
+        decoration: BoxDecoration(
+          color: AppColors.glass,
+          borderRadius: BorderRadius.circular(18),
+          border: Border.all(color: AppColors.borderMuted),
+        ),
+        child: const Column(
+          children: [
+            Icon(
+              Icons.search_off_rounded,
+              size: 36,
+              color: AppColors.textMuted,
+            ),
+            SizedBox(height: 12),
+            Text(
+              'No Soul data loaded',
+              style: TextStyle(
+                fontSize: 17,
+                fontWeight: FontWeight.w700,
+                color: AppColors.text,
               ),
             ),
-          ),
+            SizedBox(height: 6),
+            Text(
+              'Enter Soul ID and press "Load Soul Data".',
+              textAlign: TextAlign.center,
+              style: TextStyle(fontSize: 13, color: AppColors.textMuted),
+            ),
+          ],
         ),
       ),
     );
