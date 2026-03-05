@@ -5,8 +5,12 @@ class AppColors {
   static const bgDark = Color(0xFF05060A);
   static const bg = Color(0xFF0C0D12);
   static const bgLight = Color(0xFF14151B);
+  static const bgSoft = Color(0xFF1A1C24);
+  static const glass = Color(0xCC11131A);
   static const cardBackground = Color(0xFF0C0D12);
   static const inputFill = Color(0xFF14151B);
+  static const gradientTop = Color(0xFF121826);
+  static const gradientBottom = Color(0xFF05060A);
 
   // === TEXT ===
   static const textButton = Color(0xFF0C0D12);

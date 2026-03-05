@@ -14,6 +14,7 @@ class AppConstants {
 
   // Storage keys
   static const String savedSoulIdKey = 'saved_soul_id';
+  static const String watchlistSoulIdsKey = 'watchlist_soul_ids';
 
   // Default values
   static const String defaultSoulId = '1';

@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:flutter/foundation.dart';
 import '../theme/app_colors.dart';
 
 class StatsDialog extends StatelessWidget {
