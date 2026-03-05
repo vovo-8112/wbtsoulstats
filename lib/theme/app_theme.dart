@@ -11,8 +11,6 @@ class AppTheme {
         onPrimary: AppColors.onPrimary,
         secondary: AppColors.secondary,
         onSecondary: AppColors.onPrimary,
-        background: AppColors.bg,
-        onBackground: AppColors.text,
         surface: AppColors.cardBackground,
         onSurface: AppColors.text,
         error: AppColors.danger,

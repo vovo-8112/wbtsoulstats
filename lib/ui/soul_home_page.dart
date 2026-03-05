@@ -112,9 +112,9 @@ class _SoulHomePageState extends State<SoulHomePage> {
     } catch (e) {
       setState(() => loading = false);
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('❌ Error loading data: $e')),
-        );
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text('❌ Error loading data: $e')));
       }
     } finally {
       client.close();
@@ -137,7 +137,8 @@ class _SoulHomePageState extends State<SoulHomePage> {
 
   Future<void> loadSavedSoulId() async {
     try {
-      final savedId = await StorageService.getString(AppConstants.savedSoulIdKey) ??
+      final savedId =
+          await StorageService.getString(AppConstants.savedSoulIdKey) ??
           AppConstants.defaultSoulId;
       _controller.text = savedId;
       fetchSoulData(savedId);
@@ -158,9 +159,9 @@ class _SoulHomePageState extends State<SoulHomePage> {
       await launchUrl(uri);
     } else {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('❌ Cannot open $url')),
-        );
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text('❌ Cannot open $url')));
       }
     }
   }
@@ -249,17 +250,19 @@ class _SoulHomePageState extends State<SoulHomePage> {
         appBar: AppBar(
           backgroundColor: AppColors.bgDark,
           elevation: 0,
-          title: Container(), // порожній заголовок
-          actions: [
-            SoulTopBar(
+          scrolledUnderElevation: 0,
+          toolbarHeight: 70,
+          titleSpacing: 16,
+          title: Align(
+            alignment: Alignment.centerRight,
+            child: SoulTopBar(
               wbtPrice: wbtPrice,
               statsLoading: statsLoading,
-              statsData: statsData,
-                      onOpenInfo: () => openUrl(AppConstants.whiteStatUrl),
-                      onStatsLoaded: (data) => setState(() => statsData = data),
-                      onStatsLoading: (v) => setState(() => statsLoading = v),
+              onOpenInfo: () => openUrl(AppConstants.whiteStatUrl),
+              onStatsLoaded: (data) => setState(() => statsData = data),
+              onStatsLoading: (v) => setState(() => statsLoading = v),
             ),
-          ],
+          ),
         ),
         body: SafeArea(
           child: Center(
@@ -298,11 +301,14 @@ class _SoulHomePageState extends State<SoulHomePage> {
                         openUrl(AppConstants.claimContractUrl);
                       },
                       onAddCalendarPressed: () {
-                        final rewardAmount = double.tryParse(
-                              soulData?['nextRewardAmount']?.toString() ?? '0.0',
+                        final rewardAmount =
+                            double.tryParse(
+                              soulData?['nextRewardAmount']?.toString() ??
+                                  '0.0',
                             ) ??
                             0.0;
-                        final startDateTime = DateTime.tryParse(
+                        final startDateTime =
+                            DateTime.tryParse(
                               soulData?['nextRewardStartAt'] ?? '',
                             )?.toUtc() ??
                             DateTime.now().toUtc();

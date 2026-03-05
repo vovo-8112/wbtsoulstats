@@ -231,7 +231,7 @@ class SoulCardsList extends StatelessWidget {
                 ],
               ),
             );
-          }).toList(),
+          }),
       ],
     );
   }
