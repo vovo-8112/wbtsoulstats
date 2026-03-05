@@ -3,8 +3,10 @@ import '../theme/app_colors.dart';
 
 class SoulControls extends StatelessWidget {
   final TextEditingController controller;
+  final FocusNode? focusNode;
   final bool loading;
   final VoidCallback onLoadPressed;
+  final ValueChanged<String>? onSubmitted;
   final VoidCallback onExplorerPressed;
   final VoidCallback onClaimPressed;
   final VoidCallback onAddCalendarPressed;
@@ -13,8 +15,10 @@ class SoulControls extends StatelessWidget {
   const SoulControls({
     super.key,
     required this.controller,
+    this.focusNode,
     required this.loading,
     required this.onLoadPressed,
+    this.onSubmitted,
     required this.onExplorerPressed,
     required this.onClaimPressed,
     required this.onAddCalendarPressed,
@@ -45,7 +49,9 @@ class SoulControls extends StatelessWidget {
           const SizedBox(height: 8),
           TextField(
             controller: controller,
+            focusNode: focusNode,
             keyboardType: TextInputType.number,
+            onSubmitted: onSubmitted,
             style: const TextStyle(
               fontSize: 18,
               fontWeight: FontWeight.w600,

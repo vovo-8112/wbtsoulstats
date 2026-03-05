@@ -6,10 +6,18 @@ import '../utils/url_utils.dart';
 import 'soul_card.dart';
 
 class SoulCardsList extends StatelessWidget {
+  static const defaultTileOrder = <String>[
+    'current_hold',
+    'next_reward',
+    'available',
+    'claimed',
+  ];
+
   final Map<String, dynamic> soulData;
   final Map<String, String>? futureRewards;
   final double? wbtPrice;
   final Duration? timeLeft;
+  final List<String>? tileOrder;
 
   const SoulCardsList({
     super.key,
@@ -17,6 +25,7 @@ class SoulCardsList extends StatelessWidget {
     this.futureRewards,
     this.wbtPrice,
     this.timeLeft,
+    this.tileOrder,
   });
 
   @override
@@ -41,8 +50,8 @@ class SoulCardsList extends StatelessWidget {
         final crossAxisCount = constraints.maxWidth >= 760 ? 2 : 1;
         final tileHeight = constraints.maxWidth >= 760 ? 132.0 : 118.0;
 
-        final mainCards = <Widget>[
-          SoulCard(
+        final cardsByKey = <String, Widget>{
+          'current_hold': SoulCard(
             title: 'Current Hold',
             badgeLabel: 'LIVE',
             badgeColor: AppColors.success,
@@ -52,7 +61,7 @@ class SoulCardsList extends StatelessWidget {
               color: AppColors.success,
             ),
           ),
-          SoulCard(
+          'next_reward': SoulCard(
             title: 'Next Reward',
             badgeLabel: 'UPCOMING',
             badgeColor: AppColors.info,
@@ -64,7 +73,7 @@ class SoulCardsList extends StatelessWidget {
               color: AppColors.info,
             ),
           ),
-          SoulCard(
+          'available': SoulCard(
             title: 'Available',
             badgeLabel: rewardAvailable > 0 ? 'READY' : 'EMPTY',
             badgeColor: rewardAvailable > 0
@@ -72,13 +81,21 @@ class SoulCardsList extends StatelessWidget {
                 : AppColors.textMuted,
             content: _MetricBlock(amount: rewardAvailable, wbtPrice: wbtPrice),
           ),
-          SoulCard(
+          'claimed': SoulCard(
             title: 'Claimed',
             badgeLabel: 'TOTAL',
             badgeColor: AppColors.primary,
             content: _MetricBlock(amount: rewardClaimed, wbtPrice: wbtPrice),
           ),
+        };
+
+        final orderedKeys = <String>[
+          ...(tileOrder ?? defaultTileOrder).where(cardsByKey.containsKey),
+          ...defaultTileOrder.where(
+            (key) => !(tileOrder ?? defaultTileOrder).contains(key),
+          ),
         ];
+        final mainCards = orderedKeys.map((key) => cardsByKey[key]!).toList();
 
         return ListView(
           padding: const EdgeInsets.only(bottom: 20),

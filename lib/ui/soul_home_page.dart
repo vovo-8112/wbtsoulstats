@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/foundation.dart';
+import 'package:flutter/services.dart';
 import 'dart:async';
 // ignore: deprecated_member_use, avoid_web_libraries_in_flutter
 import 'dart:html' as html if (dart.library.io) 'dart:io';
@@ -31,6 +32,7 @@ class _SoulHomePageState extends State<SoulHomePage> {
   final TextEditingController _controller = TextEditingController(
     text: AppConstants.defaultSoulId,
   );
+  final FocusNode _soulIdFocusNode = FocusNode();
   Map<String, dynamic>? soulData;
   Map<String, String>? futureRewards;
   bool loading = false;
@@ -44,11 +46,13 @@ class _SoulHomePageState extends State<SoulHomePage> {
   DateTime? _lastUpdatedAt;
   String? _lastError;
   List<String> _watchlist = const [];
+  List<String> _tileOrder = List<String>.from(SoulCardsList.defaultTileOrder);
 
   @override
   void initState() {
     super.initState();
     loadWatchlist();
+    loadTileOrder();
 
     if (kIsWeb) {
       final uri = Uri.base;
@@ -131,6 +135,7 @@ class _SoulHomePageState extends State<SoulHomePage> {
   @override
   void dispose() {
     _countdownTimer?.cancel();
+    _soulIdFocusNode.dispose();
     super.dispose();
   }
 
@@ -173,6 +178,29 @@ class _SoulHomePageState extends State<SoulHomePage> {
     }
   }
 
+  Future<void> loadTileOrder() async {
+    try {
+      final stored =
+          await StorageService.getStringList(AppConstants.tileOrderKey) ??
+          SoulCardsList.defaultTileOrder;
+      final sanitized = <String>[
+        ...stored.where(SoulCardsList.defaultTileOrder.contains),
+        ...SoulCardsList.defaultTileOrder.where((k) => !stored.contains(k)),
+      ];
+      if (!mounted) return;
+      setState(() => _tileOrder = sanitized);
+    } catch (_) {
+      if (!mounted) return;
+      setState(
+        () => _tileOrder = List<String>.from(SoulCardsList.defaultTileOrder),
+      );
+    }
+  }
+
+  Future<void> _persistTileOrder() async {
+    await StorageService.setStringList(AppConstants.tileOrderKey, _tileOrder);
+  }
+
   Future<void> _persistWatchlist() async {
     await StorageService.setStringList(
       AppConstants.watchlistSoulIdsKey,
@@ -202,6 +230,77 @@ class _SoulHomePageState extends State<SoulHomePage> {
     await fetchSoulData(soulId);
   }
 
+  Future<void> _triggerLoadSoul() async {
+    final soulId = _controller.text.trim();
+    if (soulId.isEmpty) return;
+    FocusScope.of(context).unfocus();
+    await saveSoulId(soulId);
+    _updateUrl(soulId);
+    await fetchSoulData(soulId);
+  }
+
+  Future<void> _openTileOrderDialog() async {
+    final working = List<String>.from(_tileOrder);
+    final saved = await showDialog<List<String>>(
+      context: context,
+      builder: (context) {
+        return AlertDialog(
+          title: const Text('Tile Priority'),
+          content: SizedBox(
+            width: 420,
+            child: ReorderableListView.builder(
+              shrinkWrap: true,
+              itemCount: working.length,
+              onReorder: (oldIndex, newIndex) {
+                if (newIndex > oldIndex) newIndex--;
+                final item = working.removeAt(oldIndex);
+                working.insert(newIndex, item);
+              },
+              itemBuilder: (context, index) {
+                final key = working[index];
+                return ListTile(
+                  key: ValueKey(key),
+                  dense: true,
+                  contentPadding: EdgeInsets.zero,
+                  leading: const Icon(Icons.drag_indicator_rounded),
+                  title: Text(_tileTitle(key)),
+                );
+              },
+            ),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(context),
+              child: const Text('Cancel'),
+            ),
+            FilledButton(
+              onPressed: () => Navigator.pop(context, working),
+              child: const Text('Save'),
+            ),
+          ],
+        );
+      },
+    );
+    if (saved == null) return;
+    setState(() => _tileOrder = saved);
+    await _persistTileOrder();
+  }
+
+  String _tileTitle(String key) {
+    switch (key) {
+      case 'current_hold':
+        return 'Current Hold';
+      case 'next_reward':
+        return 'Next Reward';
+      case 'available':
+        return 'Available';
+      case 'claimed':
+        return 'Claimed';
+      default:
+        return key;
+    }
+  }
+
   void _updateUrl(String soulId) {
     if (!kIsWeb) return;
     final newUrl = Uri.base.replace(queryParameters: {'soulid': soulId});
@@ -226,249 +325,265 @@ class _SoulHomePageState extends State<SoulHomePage> {
     final updatedText = _lastUpdatedAt == null
         ? 'No updates yet'
         : 'Updated ${_lastUpdatedAt!.hour.toString().padLeft(2, '0')}:${_lastUpdatedAt!.minute.toString().padLeft(2, '0')}';
-
-    return GestureDetector(
-      onTap: () => FocusScope.of(context).unfocus(),
-      behavior: HitTestBehavior.opaque,
-      child: Scaffold(
-        appBar: AppBar(
-          backgroundColor: AppColors.gradientTop,
-          surfaceTintColor: Colors.transparent,
-          scrolledUnderElevation: 0,
-          toolbarHeight: 70,
-          titleSpacing: 16,
-          title: Align(
-            alignment: Alignment.centerRight,
-            child: SoulTopBar(
-              wbtPrice: wbtPrice,
-              statsLoading: statsLoading,
-              onOpenInfo: () => openUrl(AppConstants.whiteStatUrl),
-              onStatsLoaded: (data) => setState(() => statsData = data),
-              onStatsLoading: (v) => setState(() => statsLoading = v),
-            ),
+    final scaffold = Scaffold(
+      appBar: AppBar(
+        backgroundColor: AppColors.gradientTop,
+        surfaceTintColor: Colors.transparent,
+        scrolledUnderElevation: 0,
+        toolbarHeight: 70,
+        titleSpacing: 16,
+        title: Align(
+          alignment: Alignment.centerRight,
+          child: SoulTopBar(
+            wbtPrice: wbtPrice,
+            statsLoading: statsLoading,
+            onOpenInfo: () => openUrl(AppConstants.whiteStatUrl),
+            onStatsLoaded: (data) => setState(() => statsData = data),
+            onStatsLoading: (v) => setState(() => statsLoading = v),
           ),
         ),
-        body: SafeArea(
-          child: Stack(
-            children: [
-              Positioned.fill(
-                child: DecoratedBox(
-                  decoration: const BoxDecoration(
-                    gradient: LinearGradient(
-                      begin: Alignment.topCenter,
-                      end: Alignment.bottomCenter,
-                      colors: [AppColors.gradientTop, AppColors.gradientBottom],
-                    ),
+      ),
+      body: SafeArea(
+        child: Stack(
+          children: [
+            Positioned.fill(
+              child: DecoratedBox(
+                decoration: const BoxDecoration(
+                  gradient: LinearGradient(
+                    begin: Alignment.topCenter,
+                    end: Alignment.bottomCenter,
+                    colors: [AppColors.gradientTop, AppColors.gradientBottom],
                   ),
                 ),
               ),
-              Positioned(
-                top: -90,
-                left: -70,
-                child: Container(
-                  width: 240,
-                  height: 240,
-                  decoration: BoxDecoration(
-                    shape: BoxShape.circle,
-                    color: AppColors.primary.withValues(alpha: 0.08),
-                  ),
-                ),
-              ),
-              Positioned(
-                right: -60,
-                bottom: 120,
-                child: Container(
-                  width: 200,
-                  height: 200,
-                  decoration: BoxDecoration(
-                    shape: BoxShape.circle,
-                    color: AppColors.secondary.withValues(alpha: 0.06),
-                  ),
-                ),
-              ),
-              Center(
-                child: ConstrainedBox(
-                  constraints: const BoxConstraints(maxWidth: 1100),
-                  child: Column(
-                    children: [
-                      Padding(
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: 16,
-                          vertical: 8,
-                        ),
-                        child: SoulControls(
-                          controller: _controller,
-                          loading: loading,
-                          onLoadPressed: () {
-                            FocusScope.of(context).unfocus();
-                            final soulId = _controller.text.trim();
-                            if (soulId.isEmpty) return;
-                            saveSoulId(soulId);
-                            _updateUrl(soulId);
-                            fetchSoulData(soulId);
-                          },
-                          onExplorerPressed: () {
-                            final soulId = _controller.text;
-                            openUrl(UrlUtils.getSoulExplorerUrl(soulId));
-                          },
-                          onClaimPressed: () {
-                            openUrl(AppConstants.claimContractUrl);
-                          },
-                          onAddCalendarPressed: () {
-                            final rewardAmount =
-                                double.tryParse(
-                                  soulData?['nextRewardAmount']?.toString() ??
-                                      '0.0',
-                                ) ??
-                                0.0;
-                            final startDateTime =
-                                DateTime.tryParse(
-                                  soulData?['nextRewardStartAt'] ?? '',
-                                )?.toUtc() ??
-                                DateTime.now().toUtc();
-
-                            final calendarUrl = UrlUtils.getCalendarUrl(
-                              startDateTime: startDateTime,
-                              rewardAmount: rewardAmount,
-                            );
-
-                            if (kIsWeb) {
-                              html.window.open(calendarUrl, '_blank');
-                            } else {
-                              openUrl(calendarUrl);
-                            }
-                          },
-                          onAddToWatchlistPressed: () {
-                            addCurrentToWatchlist();
-                          },
-                        ),
+            ),
+            Center(
+              child: ConstrainedBox(
+                constraints: const BoxConstraints(maxWidth: 1100),
+                child: Column(
+                  children: [
+                    Padding(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 16,
+                        vertical: 8,
                       ),
-                      Padding(
-                        padding: const EdgeInsets.symmetric(horizontal: 16),
-                        child: Row(
-                          children: [
-                            const Icon(
-                              Icons.history_rounded,
-                              size: 14,
+                      child: SoulControls(
+                        controller: _controller,
+                        focusNode: _soulIdFocusNode,
+                        loading: loading,
+                        onSubmitted: (_) => _triggerLoadSoul(),
+                        onLoadPressed: _triggerLoadSoul,
+                        onExplorerPressed: () {
+                          final soulId = _controller.text;
+                          openUrl(UrlUtils.getSoulExplorerUrl(soulId));
+                        },
+                        onClaimPressed: () {
+                          openUrl(AppConstants.claimContractUrl);
+                        },
+                        onAddCalendarPressed: () {
+                          final rewardAmount =
+                              double.tryParse(
+                                soulData?['nextRewardAmount']?.toString() ??
+                                    '0.0',
+                              ) ??
+                              0.0;
+                          final startDateTime =
+                              DateTime.tryParse(
+                                soulData?['nextRewardStartAt'] ?? '',
+                              )?.toUtc() ??
+                              DateTime.now().toUtc();
+
+                          final calendarUrl = UrlUtils.getCalendarUrl(
+                            startDateTime: startDateTime,
+                            rewardAmount: rewardAmount,
+                          );
+
+                          if (kIsWeb) {
+                            html.window.open(calendarUrl, '_blank');
+                          } else {
+                            openUrl(calendarUrl);
+                          }
+                        },
+                        onAddToWatchlistPressed: () {
+                          addCurrentToWatchlist();
+                        },
+                      ),
+                    ),
+                    Padding(
+                      padding: const EdgeInsets.symmetric(horizontal: 16),
+                      child: Row(
+                        children: [
+                          const Icon(
+                            Icons.history_rounded,
+                            size: 14,
+                            color: AppColors.textMuted,
+                          ),
+                          const SizedBox(width: 6),
+                          Text(
+                            updatedText,
+                            style: const TextStyle(
+                              fontSize: 12,
                               color: AppColors.textMuted,
                             ),
-                            const SizedBox(width: 6),
-                            Text(
-                              updatedText,
-                              style: const TextStyle(
+                          ),
+                          const Spacer(),
+                          IconButton(
+                            tooltip: 'Reorder tiles',
+                            onPressed: _openTileOrderDialog,
+                            icon: const Icon(
+                              Icons.reorder_rounded,
+                              size: 18,
+                              color: AppColors.textMuted,
+                            ),
+                          ),
+                          if (_lastError != null)
+                            const Text(
+                              'Using previous available data',
+                              style: TextStyle(
                                 fontSize: 12,
-                                color: AppColors.textMuted,
+                                color: AppColors.warning,
                               ),
                             ),
-                            const Spacer(),
-                            if (_lastError != null)
-                              const Text(
-                                'Using previous available data',
-                                style: TextStyle(
-                                  fontSize: 12,
-                                  color: AppColors.warning,
-                                ),
-                              ),
-                          ],
-                        ),
+                        ],
                       ),
-                      if (_watchlist.isNotEmpty)
-                        Padding(
-                          padding: const EdgeInsets.only(
-                            left: 16,
-                            right: 16,
-                            top: 10,
-                          ),
-                          child: Align(
-                            alignment: Alignment.centerLeft,
-                            child: SingleChildScrollView(
-                              scrollDirection: Axis.horizontal,
-                              child: Row(
-                                children: _watchlist.map((id) {
-                                  final isSelected =
-                                      id == _controller.text.trim();
-                                  return Padding(
-                                    padding: const EdgeInsets.only(right: 8),
-                                    child: InputChip(
-                                      selected: isSelected,
-                                      selectedColor: AppColors.primary
-                                          .withValues(alpha: 0.25),
-                                      backgroundColor: AppColors.bg,
-                                      side: const BorderSide(
-                                        color: AppColors.borderMuted,
-                                      ),
-                                      label: Text(
-                                        'Soul #$id',
-                                        style: TextStyle(
-                                          color: isSelected
-                                              ? AppColors.text
-                                              : AppColors.textMuted,
-                                          fontWeight: FontWeight.w600,
-                                        ),
-                                      ),
-                                      onPressed: () => openFromWatchlist(id),
-                                      onDeleted: () => removeFromWatchlist(id),
-                                      deleteIcon: Icon(
-                                        Icons.close,
-                                        size: 16,
+                    ),
+                    if (_watchlist.isNotEmpty)
+                      Padding(
+                        padding: const EdgeInsets.only(
+                          left: 16,
+                          right: 16,
+                          top: 10,
+                        ),
+                        child: Align(
+                          alignment: Alignment.centerLeft,
+                          child: SingleChildScrollView(
+                            scrollDirection: Axis.horizontal,
+                            child: Row(
+                              children: _watchlist.map((id) {
+                                final isSelected =
+                                    id == _controller.text.trim();
+                                return Padding(
+                                  padding: const EdgeInsets.only(right: 8),
+                                  child: InputChip(
+                                    selected: isSelected,
+                                    selectedColor: AppColors.primary.withValues(
+                                      alpha: 0.25,
+                                    ),
+                                    backgroundColor: AppColors.bg,
+                                    side: const BorderSide(
+                                      color: AppColors.borderMuted,
+                                    ),
+                                    label: Text(
+                                      'Soul #$id',
+                                      style: TextStyle(
                                         color: isSelected
                                             ? AppColors.text
                                             : AppColors.textMuted,
+                                        fontWeight: FontWeight.w600,
                                       ),
-                                      deleteButtonTooltipMessage: 'Remove',
                                     ),
-                                  );
-                                }).toList(),
-                              ),
+                                    onPressed: () => openFromWatchlist(id),
+                                    onDeleted: () => removeFromWatchlist(id),
+                                    deleteIcon: Icon(
+                                      Icons.close,
+                                      size: 16,
+                                      color: isSelected
+                                          ? AppColors.text
+                                          : AppColors.textMuted,
+                                    ),
+                                    deleteButtonTooltipMessage: 'Remove',
+                                  ),
+                                );
+                              }).toList(),
                             ),
                           ),
                         ),
-                      const SizedBox(height: 8),
-                      if (loading)
-                        const Expanded(
-                          child: Center(child: ShimmerPlaceholderList()),
-                        )
-                      else if (soulData != null)
-                        Expanded(
-                          child: RefreshIndicator(
-                            color: AppColors.primary,
-                            backgroundColor: AppColors.bg,
-                            onRefresh: () async {
-                              await fetchSoulData(_controller.text);
-                            },
-                            child: Padding(
-                              padding: const EdgeInsets.symmetric(
-                                horizontal: 16,
-                              ),
-                              child: SoulCardsList(
-                                soulData: soulData!,
-                                futureRewards: futureRewards,
-                                wbtPrice: wbtPrice,
-                                timeLeft: _timeLeft,
-                              ),
+                      ),
+                    const SizedBox(height: 8),
+                    if (loading)
+                      const Expanded(
+                        child: Center(child: ShimmerPlaceholderList()),
+                      )
+                    else if (soulData != null)
+                      Expanded(
+                        child: RefreshIndicator(
+                          color: AppColors.primary,
+                          backgroundColor: AppColors.bg,
+                          onRefresh: () async {
+                            await fetchSoulData(_controller.text);
+                          },
+                          child: Padding(
+                            padding: const EdgeInsets.symmetric(horizontal: 16),
+                            child: SoulCardsList(
+                              soulData: soulData!,
+                              futureRewards: futureRewards,
+                              wbtPrice: wbtPrice,
+                              timeLeft: _timeLeft,
+                              tileOrder: _tileOrder,
                             ),
                           ),
-                        )
-                      else
-                        Expanded(
-                          child: ListView(
-                            physics: const AlwaysScrollableScrollPhysics(),
-                            children: const [
-                              SizedBox(height: 72),
-                              _EmptyStateCard(),
-                            ],
-                          ),
                         ),
-                    ],
-                  ),
+                      )
+                    else
+                      Expanded(
+                        child: ListView(
+                          physics: const AlwaysScrollableScrollPhysics(),
+                          children: const [
+                            SizedBox(height: 72),
+                            _EmptyStateCard(),
+                          ],
+                        ),
+                      ),
+                  ],
                 ),
               ),
-            ],
+            ),
+          ],
+        ),
+      ),
+    );
+
+    return Shortcuts(
+      shortcuts: const <ShortcutActivator, Intent>{
+        SingleActivator(LogicalKeyboardKey.enter): _LoadSoulIntent(),
+        SingleActivator(LogicalKeyboardKey.slash): _FocusSoulInputIntent(),
+      },
+      child: Actions(
+        actions: <Type, Action<Intent>>{
+          _LoadSoulIntent: CallbackAction<_LoadSoulIntent>(
+            onInvoke: (_) {
+              _triggerLoadSoul();
+              return null;
+            },
+          ),
+          _FocusSoulInputIntent: CallbackAction<_FocusSoulInputIntent>(
+            onInvoke: (_) {
+              if (!_soulIdFocusNode.hasFocus) {
+                _soulIdFocusNode.requestFocus();
+              }
+              return null;
+            },
+          ),
+        },
+        child: Focus(
+          autofocus: true,
+          child: GestureDetector(
+            onTap: () => FocusScope.of(context).unfocus(),
+            behavior: HitTestBehavior.opaque,
+            child: scaffold,
           ),
         ),
       ),
     );
   }
+}
+
+class _LoadSoulIntent extends Intent {
+  const _LoadSoulIntent();
+}
+
+class _FocusSoulInputIntent extends Intent {
+  const _FocusSoulInputIntent();
 }
 
 class _EmptyStateCard extends StatelessWidget {
