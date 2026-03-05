@@ -79,7 +79,7 @@ class SoulControls extends StatelessWidget {
                 : const Row(
                     mainAxisAlignment: MainAxisAlignment.center,
                     children: [
-                      Icon(Icons.download_for_offline_rounded, size: 16),
+                      Icon(Icons.bolt_rounded, size: 16),
                       SizedBox(width: 8),
                       Text('Load Soul Data'),
                     ],
@@ -98,24 +98,30 @@ class SoulControls extends StatelessWidget {
             ],
           ),
           const SizedBox(height: 10),
-          Wrap(
-            spacing: 10,
-            runSpacing: 10,
+          Row(
             children: [
-              _ActionButton(
-                label: 'Explorer',
-                icon: Icons.account_tree_outlined,
-                onPressed: onExplorerPressed,
+              Expanded(
+                child: _ActionButton(
+                  label: 'Explorer',
+                  icon: Icons.account_tree_outlined,
+                  onPressed: onExplorerPressed,
+                ),
               ),
-              _ActionButton(
-                label: 'Claim',
-                icon: Icons.payments_outlined,
-                onPressed: onClaimPressed,
+              const SizedBox(width: 8),
+              Expanded(
+                child: _ActionButton(
+                  label: 'Claim',
+                  icon: Icons.payments_outlined,
+                  onPressed: onClaimPressed,
+                ),
               ),
-              _ActionButton(
-                label: 'Calendar',
-                icon: Icons.event_available_outlined,
-                onPressed: onAddCalendarPressed,
+              const SizedBox(width: 8),
+              Expanded(
+                child: _ActionButton(
+                  label: 'Calendar',
+                  icon: Icons.event_available_outlined,
+                  onPressed: onAddCalendarPressed,
+                ),
               ),
             ],
           ),
@@ -138,10 +144,25 @@ class _ActionButton extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return OutlinedButton.icon(
+    return OutlinedButton(
       onPressed: onPressed,
-      icon: Icon(icon, size: 16),
-      label: Text(label),
+      style: OutlinedButton.styleFrom(
+        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 10),
+      ),
+      child: FittedBox(
+        fit: BoxFit.scaleDown,
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(icon, size: 14),
+            const SizedBox(width: 5),
+            Text(
+              label,
+              style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600),
+            ),
+          ],
+        ),
+      ),
     );
   }
 }

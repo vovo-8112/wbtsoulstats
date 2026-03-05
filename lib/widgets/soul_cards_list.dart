@@ -56,6 +56,8 @@ class SoulCardsList extends StatelessWidget {
             title: 'Next Reward',
             badgeLabel: 'UPCOMING',
             badgeColor: AppColors.info,
+            footer:
+                'Next reward date: ${UrlUtils.formatDate(soulData['nextRewardStartAt'])}',
             content: _MetricBlock(amount: nextReward, wbtPrice: wbtPrice),
             trailing: _InfoChip(
               label: UrlUtils.formatDuration(timeLeft),
@@ -99,18 +101,6 @@ class SoulCardsList extends StatelessWidget {
                 futureRewards: futureRewards!,
                 wbtPrice: wbtPrice,
               ),
-            const SizedBox(height: 8),
-            Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 6),
-              child: Text(
-                'Next reward date: ${UrlUtils.formatDate(soulData['nextRewardStartAt'])}',
-                style: const TextStyle(
-                  color: AppColors.textMuted,
-                  fontSize: 12,
-                  fontWeight: FontWeight.w500,
-                ),
-              ),
-            ),
           ],
         );
       },

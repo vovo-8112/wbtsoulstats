@@ -232,6 +232,8 @@ class _SoulHomePageState extends State<SoulHomePage> {
       behavior: HitTestBehavior.opaque,
       child: Scaffold(
         appBar: AppBar(
+          backgroundColor: AppColors.gradientTop,
+          surfaceTintColor: Colors.transparent,
           scrolledUnderElevation: 0,
           toolbarHeight: 70,
           titleSpacing: 16,
@@ -395,12 +397,23 @@ class _SoulHomePageState extends State<SoulHomePage> {
                                       side: const BorderSide(
                                         color: AppColors.borderMuted,
                                       ),
-                                      label: Text('Soul #$id'),
+                                      label: Text(
+                                        'Soul #$id',
+                                        style: TextStyle(
+                                          color: isSelected
+                                              ? AppColors.text
+                                              : AppColors.textMuted,
+                                          fontWeight: FontWeight.w600,
+                                        ),
+                                      ),
                                       onPressed: () => openFromWatchlist(id),
                                       onDeleted: () => removeFromWatchlist(id),
-                                      deleteIcon: const Icon(
+                                      deleteIcon: Icon(
                                         Icons.close,
                                         size: 16,
+                                        color: isSelected
+                                            ? AppColors.text
+                                            : AppColors.textMuted,
                                       ),
                                       deleteButtonTooltipMessage: 'Remove',
                                     ),
