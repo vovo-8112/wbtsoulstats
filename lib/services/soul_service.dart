@@ -2,7 +2,6 @@ import 'dart:convert';
 import 'package:http/http.dart' as http;
 import '../utils/constants.dart';
 
-/// Service for fetching soul data
 class SoulService {
   Future<Map<String, dynamic>?> fetchSoul(String soulId, http.Client client) async {
     final url = '${AppConstants.soulsEndpoint}?soulId=$soulId';
