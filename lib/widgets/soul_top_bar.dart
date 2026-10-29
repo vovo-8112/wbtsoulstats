@@ -139,7 +139,7 @@ class SoulTopBar extends StatelessWidget {
                   PopupMenuItem<String>(
                     enabled: false,
                     child: Text(
-                      'Data is sourced from WhiteStat.',
+                      'Live hold and rewards: Whitechain.\nClaimed total, price and stats: WhiteStat.',
                       style: TextStyle(
                         fontSize: 12,
                         color: AppColors.textMuted,

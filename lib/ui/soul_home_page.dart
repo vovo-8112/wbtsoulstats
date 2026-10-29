@@ -45,6 +45,8 @@ class _SoulHomePageState extends State<SoulHomePage> {
   bool statsLoading = false;
   DateTime? _lastUpdatedAt;
   String? _lastError;
+  int _loadRequest = 0;
+  String? _loadedSoulId;
   List<String> _watchlist = const [];
   String? _draggingWatchId;
   int? _lastWatchHoverTargetIndex;
@@ -73,6 +75,7 @@ class _SoulHomePageState extends State<SoulHomePage> {
 
   void startCountdown(String? isoDate) {
     _countdownTimer?.cancel();
+    _timeLeft = null;
     if (isoDate == null) return;
 
     final target = DateTime.tryParse(isoDate)?.toUtc();
@@ -91,36 +94,69 @@ class _SoulHomePageState extends State<SoulHomePage> {
     }
 
     tick();
-    _countdownTimer = Timer.periodic(const Duration(seconds: 1), (_) => tick());
+    if (_timeLeft != Duration.zero) {
+      _countdownTimer = Timer.periodic(
+        const Duration(seconds: 1),
+        (_) => tick(),
+      );
+    }
   }
 
   Future<void> fetchSoulData(String soulId) async {
-    setState(() => loading = true);
+    final request = ++_loadRequest;
+    setState(() {
+      loading = true;
+      _lastError = null;
+      if (_loadedSoulId != soulId) {
+        soulData = null;
+        futureRewards = null;
+        _lastUpdatedAt = null;
+        _countdownTimer?.cancel();
+        _timeLeft = null;
+      }
+    });
     final client = http.Client();
     try {
       final data = await _soulService.fetchSoul(soulId, client);
-      final price = await _priceService.fetchPrice(client);
+      if (!mounted || request != _loadRequest) return;
+      if (data == null) throw Exception('Soul #$soulId was not found');
+      // A quote outage must not hide successfully loaded on-chain rewards.
+      double? price;
+      try {
+        price = await _priceService.fetchPrice(client);
+      } catch (_) {
+        price = null;
+      }
+      if (!mounted || request != _loadRequest) return;
       soulData = data;
+      _loadedSoulId = soulId;
       wbtPrice = price;
       startCountdown(soulData!['nextRewardStartAt']);
       setState(() {
         final holdAmount =
             double.tryParse(soulData!['holdAmount'].toString()) ?? 0.0;
+        final availableAmount =
+            double.tryParse(soulData!['rewardAvailableAmount'].toString()) ??
+            0.0;
+        final forecastBase = holdAmount + availableAmount;
         final rewardPercent =
             double.tryParse(soulData!['rewardPercent'].toString()) ?? 0.0;
         futureRewards = {
           'In 3 months':
-              "${Formatters.formatTokens(RewardCalculator.calculateFuture(currentAmount: holdAmount, rewardPercent: rewardPercent, months: 3))} WBT",
+              "${Formatters.formatTokens(RewardCalculator.calculateFuture(currentAmount: forecastBase, rewardPercent: rewardPercent, months: 3))} WBT",
           'In 6 months':
-              "${Formatters.formatTokens(RewardCalculator.calculateFuture(currentAmount: holdAmount, rewardPercent: rewardPercent, months: 6))} WBT",
+              "${Formatters.formatTokens(RewardCalculator.calculateFuture(currentAmount: forecastBase, rewardPercent: rewardPercent, months: 6))} WBT",
           'In 1 year':
-              "${Formatters.formatTokens(RewardCalculator.calculateFuture(currentAmount: holdAmount, rewardPercent: rewardPercent, months: 12))} WBT",
+              "${Formatters.formatTokens(RewardCalculator.calculateFuture(currentAmount: forecastBase, rewardPercent: rewardPercent, months: 12))} WBT",
         };
-        _lastUpdatedAt = DateTime.now();
+        _lastUpdatedAt = DateTime.tryParse(
+          data['updatedAt'] as String,
+        )?.toLocal();
         _lastError = null;
         loading = false;
       });
     } catch (e) {
+      if (!mounted || request != _loadRequest) return;
       setState(() {
         _lastError = e.toString();
         loading = false;
@@ -138,6 +174,7 @@ class _SoulHomePageState extends State<SoulHomePage> {
   @override
   void dispose() {
     _countdownTimer?.cancel();
+    _controller.dispose();
     _soulIdFocusNode.dispose();
     super.dispose();
   }
@@ -474,9 +511,11 @@ class _SoulHomePageState extends State<SoulHomePage> {
                             ),
                           ),
                           if (_lastError != null)
-                            const Text(
-                              'Using previous available data',
-                              style: TextStyle(
+                            Text(
+                              soulData == null
+                                  ? 'Unable to load live data'
+                                  : 'Update failed; showing previous data',
+                              style: const TextStyle(
                                 fontSize: 12,
                                 color: AppColors.warning,
                               ),

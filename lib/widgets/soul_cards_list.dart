@@ -147,6 +147,13 @@ class _ForecastSection extends StatelessWidget {
         ),
       ),
       children: [
+        const Padding(
+          padding: EdgeInsets.only(bottom: 8),
+          child: Text(
+            'Estimate for 30-day periods with unclaimed rewards reinvested. Uses the next reward rate; future rate changes are not included.',
+            style: TextStyle(fontSize: 12, color: AppColors.textMuted),
+          ),
+        ),
         Wrap(
           spacing: 8,
           runSpacing: 8,

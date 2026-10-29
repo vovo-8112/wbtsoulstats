@@ -5,8 +5,10 @@ import '../utils/constants.dart';
 /// Service for fetching WBT price
 class WBTPrice {
   Future<double?> fetchPrice(http.Client client) async {
-    final response = await client.get(Uri.parse(AppConstants.pricesEndpoint));
-    
+    final response = await client
+        .get(Uri.parse(AppConstants.pricesEndpoint))
+        .timeout(const Duration(seconds: 10));
+
     if (response.statusCode == 200) {
       final data = json.decode(response.body) as Map<String, dynamic>;
       final price = data['price'];
