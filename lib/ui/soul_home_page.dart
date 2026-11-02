@@ -494,7 +494,9 @@ class _SoulHomePageState extends State<SoulHomePage> {
                           ),
                           const SizedBox(width: 6),
                           Text(
-                            updatedText,
+                            loading && soulData != null
+                                ? 'Updating… · $updatedText'
+                                : updatedText,
                             style: const TextStyle(
                               fontSize: 12,
                               color: AppColors.textMuted,
@@ -660,7 +662,7 @@ class _SoulHomePageState extends State<SoulHomePage> {
                         ),
                       ),
                     const SizedBox(height: 8),
-                    if (loading)
+                    if (loading && soulData == null)
                       const Expanded(
                         child: Center(child: ShimmerPlaceholderList()),
                       )

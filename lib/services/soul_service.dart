@@ -5,6 +5,8 @@ import 'soul_rewards_service.dart';
 
 /// Service for fetching soul data
 class SoulService {
+  final SoulRewardsService _rewardsService = SoulRewardsService();
+
   Future<Map<String, dynamic>?> fetchSoul(
     String soulId,
     http.Client client,
@@ -12,7 +14,7 @@ class SoulService {
     // Live rewards only need the ID, not the WhiteStat response.
     final results = await Future.wait<Map<String, dynamic>?>([
       _fetchMetadata(soulId, client),
-      SoulRewardsService().refreshSoul({'soulId': soulId}, client),
+      _rewardsService.refreshSoul({'soulId': soulId}, client),
     ], eagerError: true);
     final metadata = results[0];
     if (metadata == null) return null;

@@ -43,6 +43,8 @@ void main() {
     bool failRpc = false,
     bool malformed = false,
     bool missing = false,
+    BigInt? rateValue,
+    void Function(int)? onBatch,
     void Function(List<dynamic>)? onRate,
   }) => MockClient((request) async {
     if (request.method == 'GET') {
@@ -71,6 +73,7 @@ void main() {
       );
     }
     final calls = body as List<dynamic>;
+    onBatch?.call(calls.length);
     for (final call in calls) {
       expect(call['params'][1], '0x123');
     }
@@ -90,7 +93,7 @@ void main() {
       onRate?.call(calls);
       return http.Response(
         jsonEncode([
-          {'id': 0, 'result': hex(percent)},
+          {'id': 0, 'result': hex(rateValue ?? percent)},
         ]),
         200,
       );
@@ -108,6 +111,7 @@ void main() {
       seconds(claimDate ?? claimed),
       (holdValue ?? hold) << 96,
       seconds(updated),
+      if (calls.length == 5) rateValue ?? percent,
     ];
     // JSON-RPC batch replies can arrive in any order.
     return http.Response(
@@ -214,6 +218,61 @@ void main() {
       await SoulService().fetchSoul('21147', client(missing: true)),
       isNull,
     );
+  });
+
+  test('repeat refresh reads fresh rates in the state batch', () async {
+    final service = SoulService();
+    await service.fetchSoul('21147', client());
+    final batches = <int>[];
+    final changedRate = BigInt.from(900000000);
+    final result = (await service.fetchSoul(
+      '21147',
+      client(rateValue: changedRate, onBatch: batches.add),
+    ))!;
+    expect(batches, [5]);
+    expect(result['rewardPercent'], 0.9);
+    final expected =
+        (hold + available) * changedRate ~/ BigInt.from(100000000000);
+    expect(result['nextRewardAmount'], expected.toDouble() / 1e18);
+  });
+
+  test(
+    'claim invalidates the predicted date and triggers a fresh rate read',
+    () async {
+      final service = SoulService();
+      await service.fetchSoul('21147', client());
+      final batches = <int>[];
+      final result = (await service.fetchSoul(
+        '21147',
+        client(claimDate: now, onBatch: batches.add),
+      ))!;
+      expect(batches, [5, 1]);
+      expect(
+        DateTime.parse(result['nextRewardStartAt']),
+        now.add(const Duration(days: 30)),
+      );
+    },
+  );
+
+  test('hold level change triggers a separate rate read', () async {
+    final service = SoulService();
+    await service.fetchSoul('21147', client());
+    final batches = <int>[];
+    final result = (await service.fetchSoul(
+      '21147',
+      client(
+        holdValue: BigInt.from(200) * BigInt.from(10).pow(18),
+        onBatch: batches.add,
+        onRate: (calls) {
+          expect(
+            calls.single['params'][0]['data'],
+            startsWith('0xd898cd53${hex(BigInt.from(2)).substring(2)}'),
+          );
+        },
+      ),
+    ))!;
+    expect(batches, [5, 1]);
+    expect(result['holdLevel'], 2);
   });
 
   test('chain requests start without waiting for WhiteStat', () async {

@@ -9,6 +9,9 @@ class SoulRewardsService {
   static const _periodSeconds = 30 * 24 * 60 * 60;
   static final _weiPerToken = BigInt.from(10).pow(18);
   static final _percentDenominator = BigInt.from(100000000000);
+  // Only cache request parameters, never balances or rates. Every refresh still
+  // reads live values at one block, including any newly scheduled rate changes.
+  final _periodHints = <BigInt, (int, int)>{};
 
   Future<Map<String, dynamic>> refreshSoul(
     Map<String, dynamic> soul,
@@ -32,6 +35,7 @@ class SoulRewardsService {
     final attributeWord = AppConstants.holdAmountAttributeAddress
         .substring(2)
         .padLeft(64, '0');
+    final hint = _periodHints[soulId];
 
     // Pin all reads to one block so period boundaries cannot mix snapshots.
     final values = await _calls(client, blockNumber, [
@@ -51,6 +55,7 @@ class SoulRewardsService {
         AppConstants.soulAttributeRegistryAddress,
         'f58fa64b$idWord$attributeWord', // soulAttributeUpdatedAt(uint256,address)
       ),
+      if (hint != null) _rateCall(hint.$1, hint.$2),
     ]);
     final available = values[0];
     final claimedAt = values[1].toInt();
@@ -70,16 +75,23 @@ class SoulRewardsService {
       nextRewardAt =
           intervalStart +
           ((now - intervalStart) ~/ _periodSeconds + 1) * _periodSeconds;
-      final rates = await _calls(client, blockNumber, [
-        (
-          AppConstants.soulDropAddress,
-          // percentByHoldLevelAt(uint8,uint256) includes scheduled changes.
-          'd898cd53${_word(BigInt.from(level))}'
-              '${_word(BigInt.from(nextRewardAt))}',
-        ),
-      ]);
-      percent = rates.single;
+      if (hint != null && hint.$1 == level && hint.$2 == nextRewardAt) {
+        percent = values[4];
+      } else {
+        final rates = await _calls(client, blockNumber, [
+          _rateCall(level, nextRewardAt),
+        ]);
+        percent = rates.single;
+      }
       nextReward = (hold + available) * percent ~/ _percentDenominator;
+      // Keep the hints bounded when browsing many different Souls.
+      _periodHints.remove(soulId);
+      if (_periodHints.length >= 32) {
+        _periodHints.remove(_periodHints.keys.first);
+      }
+      _periodHints[soulId] = (level, nextRewardAt);
+    } else {
+      _periodHints.remove(soulId);
     }
 
     return {
@@ -95,6 +107,12 @@ class SoulRewardsService {
       'updatedAt': _date(now),
     };
   }
+
+  static (String, String) _rateCall(int level, int periodEnd) => (
+    AppConstants.soulDropAddress,
+    // percentByHoldLevelAt(uint8,uint256) includes scheduled changes.
+    'd898cd53${_word(BigInt.from(level))}${_word(BigInt.from(periodEnd))}',
+  );
 
   Future<List<BigInt>> _calls(
     http.Client client,
