@@ -116,21 +116,17 @@ class _SoulHomePageState extends State<SoulHomePage> {
       }
     });
     final client = http.Client();
+    // Attach the error handler immediately, including when Soul loading fails.
+    final priceFuture = _priceService
+        .fetchPrice(client)
+        .catchError((Object _) => null);
     try {
       final data = await _soulService.fetchSoul(soulId, client);
       if (!mounted || request != _loadRequest) return;
       if (data == null) throw Exception('Soul #$soulId was not found');
-      // A quote outage must not hide successfully loaded on-chain rewards.
-      double? price;
-      try {
-        price = await _priceService.fetchPrice(client);
-      } catch (_) {
-        price = null;
-      }
-      if (!mounted || request != _loadRequest) return;
       soulData = data;
       _loadedSoulId = soulId;
-      wbtPrice = price;
+      wbtPrice = null;
       startCountdown(soulData!['nextRewardStartAt']);
       setState(() {
         final holdAmount =
@@ -155,6 +151,10 @@ class _SoulHomePageState extends State<SoulHomePage> {
         _lastError = null;
         loading = false;
       });
+      // Render rewards first; the optional USD quote can arrive later.
+      final price = await priceFuture;
+      if (!mounted || request != _loadRequest) return;
+      setState(() => wbtPrice = price);
     } catch (e) {
       if (!mounted || request != _loadRequest) return;
       setState(() {

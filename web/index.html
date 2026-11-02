@@ -34,6 +34,11 @@
 
   <title>wbtsoulstats</title>
   <link rel="manifest" href="manifest.json">
+  <!-- Establish API connections while the Flutter runtime is loading. -->
+  <link rel="preconnect" href="https://rpc.whitechain.io" crossorigin>
+  <link rel="preconnect" href="https://whitestat.com" crossorigin>
+  <!-- The web deployment uses Flutter's JavaScript entry point. -->
+  <link rel="preload" href="main.dart.js" as="script">
   <style>
     html, body {
       margin: 0;

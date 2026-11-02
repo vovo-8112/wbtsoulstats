@@ -9,6 +9,21 @@ class SoulService {
     String soulId,
     http.Client client,
   ) async {
+    // Live rewards only need the ID, not the WhiteStat response.
+    final results = await Future.wait<Map<String, dynamic>?>([
+      _fetchMetadata(soulId, client),
+      SoulRewardsService().refreshSoul({'soulId': soulId}, client),
+    ], eagerError: true);
+    final metadata = results[0];
+    if (metadata == null) return null;
+    // Never allow stale WhiteStat fields to overwrite live chain values.
+    return {...metadata, ...results[1]!};
+  }
+
+  Future<Map<String, dynamic>?> _fetchMetadata(
+    String soulId,
+    http.Client client,
+  ) async {
     final uri = Uri.parse(
       AppConstants.soulsEndpoint,
     ).replace(queryParameters: {'soulId': soulId});
@@ -22,7 +37,7 @@ class SoulService {
       if (soul['soulId'].toString() != soulId) {
         throw const FormatException('Soul API returned a different Soul');
       }
-      return SoulRewardsService().refreshSoul(soul, client);
+      return soul;
     } else {
       throw Exception('Error loading soul data: ${response.statusCode}');
     }

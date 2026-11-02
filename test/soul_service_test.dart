@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:convert';
 
 import 'package:flutter_test/flutter_test.dart';
@@ -27,6 +28,13 @@ void main() {
   String hex(BigInt value) => '0x${value.toRadixString(16).padLeft(64, '0')}';
   BigInt seconds(DateTime date) =>
       BigInt.from(date.millisecondsSinceEpoch ~/ 1000);
+
+  Future<http.Response> forward(http.Client fixture, http.Request request) {
+    final copy = http.Request(request.method, request.url)
+      ..headers.addAll(request.headers)
+      ..body = request.body;
+    return fixture.send(copy).then(http.Response.fromStream);
+  }
 
   MockClient client({
     BigInt? holdValue,
@@ -207,4 +215,62 @@ void main() {
       isNull,
     );
   });
+
+  test('chain requests start without waiting for WhiteStat', () async {
+    final chainStarted = Completer<void>();
+    final fixture = client();
+    final concurrentClient = MockClient((request) async {
+      if (request.method == 'GET') {
+        // WhiteStat cannot finish until the independent chain read starts.
+        await chainStarted.future.timeout(const Duration(seconds: 1));
+      } else if (!chainStarted.isCompleted) {
+        chainStarted.complete();
+      }
+      return forward(fixture, request);
+    });
+    addTearDown(concurrentClient.close);
+    addTearDown(fixture.close);
+    final result = await SoulService().fetchSoul('21147', concurrentClient);
+    expect(
+      result!['rewardAvailableAmount'],
+      closeTo(2.1841213740888903, 1e-12),
+    );
+    expect(result['holdAmount'], closeTo(40.65088498, 1e-10));
+  });
+
+  test(
+    'WhiteStat failure is reported while chain requests are in flight',
+    () async {
+      final chainStarted = Completer<void>();
+      final releaseChain = Completer<void>();
+      final fixture = client();
+      final failingClient = MockClient((request) async {
+        if (request.method == 'GET') {
+          await chainStarted.future;
+          return http.Response('Unavailable', 503);
+        }
+        if (!chainStarted.isCompleted) chainStarted.complete();
+        await releaseChain.future;
+        return forward(fixture, request);
+      });
+      addTearDown(failingClient.close);
+      addTearDown(fixture.close);
+      try {
+        await expectLater(
+          SoulService()
+              .fetchSoul('21147', failingClient)
+              .timeout(const Duration(seconds: 1)),
+          throwsA(
+            isA<Exception>().having(
+              (e) => e.toString(),
+              'message',
+              contains('503'),
+            ),
+          ),
+        );
+      } finally {
+        releaseChain.complete();
+      }
+    },
+  );
 }
