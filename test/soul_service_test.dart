@@ -1,4 +1,3 @@
-import 'dart:async';
 import 'dart:convert';
 
 import 'package:flutter_test/flutter_test.dart';
@@ -15,26 +14,9 @@ void main() {
   final claimed = DateTime.parse('2026-06-30T09:19:00Z');
   final now = DateTime.parse('2026-10-29T14:00:00Z');
   final next = DateTime.parse('2026-11-27T09:22:58Z');
-  final stale = <String, dynamic>{
-    'soulId': 21147,
-    'holdAmount': 30,
-    'rewardAvailableAmount': 1.6273285558592847,
-    'rewardClaimedAmount': 5.223200738802239,
-    'rewardPercent': 1.316973381,
-    'nextRewardAmount': 0.557,
-    'nextRewardStartAt': '2026-11-27T09:22:58Z',
-  };
-
   String hex(BigInt value) => '0x${value.toRadixString(16).padLeft(64, '0')}';
   BigInt seconds(DateTime date) =>
       BigInt.from(date.millisecondsSinceEpoch ~/ 1000);
-
-  Future<http.Response> forward(http.Client fixture, http.Request request) {
-    final copy = http.Request(request.method, request.url)
-      ..headers.addAll(request.headers)
-      ..body = request.body;
-    return fixture.send(copy).then(http.Response.fromStream);
-  }
 
   MockClient client({
     BigInt? holdValue,
@@ -47,15 +29,7 @@ void main() {
     void Function(int)? onBatch,
     void Function(List<dynamic>)? onRate,
   }) => MockClient((request) async {
-    if (request.method == 'GET') {
-      expect(request.url.queryParameters, {'soulId': '21147'});
-      return http.Response(
-        jsonEncode({
-          'souls': missing ? [] : [stale],
-        }),
-        200,
-      );
-    }
+    expect(request.method, 'POST');
     expect(request.url.toString(), AppConstants.whitechainRpcUrl);
     final body = jsonDecode(request.body);
     if (body is Map) {
@@ -111,7 +85,8 @@ void main() {
       seconds(claimDate ?? claimed),
       (holdValue ?? hold) << 96,
       seconds(updated),
-      if (calls.length == 5) rateValue ?? percent,
+      missing ? BigInt.zero : BigInt.one,
+      if (calls.length == 6) rateValue ?? percent,
     ];
     // JSON-RPC batch replies can arrive in any order.
     return http.Response(
@@ -152,7 +127,6 @@ void main() {
       expect(result['nextRewardAmount'], closeTo(0.45130050523207743, 1e-12));
       expect(DateTime.parse(result['nextRewardStartAt']), next);
       expect(DateTime.parse(result['updatedAt']), now);
-      expect(result['rewardClaimedAmount'], stale['rewardClaimedAmount']);
     },
   );
 
@@ -197,7 +171,7 @@ void main() {
   );
 
   test(
-    'RPC errors do not fall back to incorrect WhiteStat reward values',
+    'RPC errors surface without displaying incorrect reward values',
     () async {
       await expectLater(
         SoulService().fetchSoul('21147', client(failRpc: true)),
@@ -229,7 +203,7 @@ void main() {
       '21147',
       client(rateValue: changedRate, onBatch: batches.add),
     ))!;
-    expect(batches, [5]);
+    expect(batches, [6]);
     expect(result['rewardPercent'], 0.9);
     final expected =
         (hold + available) * changedRate ~/ BigInt.from(100000000000);
@@ -246,7 +220,7 @@ void main() {
         '21147',
         client(claimDate: now, onBatch: batches.add),
       ))!;
-      expect(batches, [5, 1]);
+      expect(batches, [6, 1]);
       expect(
         DateTime.parse(result['nextRewardStartAt']),
         now.add(const Duration(days: 30)),
@@ -271,65 +245,7 @@ void main() {
         },
       ),
     ))!;
-    expect(batches, [5, 1]);
+    expect(batches, [6, 1]);
     expect(result['holdLevel'], 2);
   });
-
-  test('chain requests start without waiting for WhiteStat', () async {
-    final chainStarted = Completer<void>();
-    final fixture = client();
-    final concurrentClient = MockClient((request) async {
-      if (request.method == 'GET') {
-        // WhiteStat cannot finish until the independent chain read starts.
-        await chainStarted.future.timeout(const Duration(seconds: 1));
-      } else if (!chainStarted.isCompleted) {
-        chainStarted.complete();
-      }
-      return forward(fixture, request);
-    });
-    addTearDown(concurrentClient.close);
-    addTearDown(fixture.close);
-    final result = await SoulService().fetchSoul('21147', concurrentClient);
-    expect(
-      result!['rewardAvailableAmount'],
-      closeTo(2.1841213740888903, 1e-12),
-    );
-    expect(result['holdAmount'], closeTo(40.65088498, 1e-10));
-  });
-
-  test(
-    'WhiteStat failure is reported while chain requests are in flight',
-    () async {
-      final chainStarted = Completer<void>();
-      final releaseChain = Completer<void>();
-      final fixture = client();
-      final failingClient = MockClient((request) async {
-        if (request.method == 'GET') {
-          await chainStarted.future;
-          return http.Response('Unavailable', 503);
-        }
-        if (!chainStarted.isCompleted) chainStarted.complete();
-        await releaseChain.future;
-        return forward(fixture, request);
-      });
-      addTearDown(failingClient.close);
-      addTearDown(fixture.close);
-      try {
-        await expectLater(
-          SoulService()
-              .fetchSoul('21147', failingClient)
-              .timeout(const Duration(seconds: 1)),
-          throwsA(
-            isA<Exception>().having(
-              (e) => e.toString(),
-              'message',
-              contains('503'),
-            ),
-          ),
-        );
-      } finally {
-        releaseChain.complete();
-      }
-    },
-  );
 }

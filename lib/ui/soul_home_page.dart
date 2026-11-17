@@ -9,7 +9,6 @@ import 'package:http/http.dart' as http;
 import 'package:url_launcher/url_launcher.dart';
 
 import '../theme/app_colors.dart';
-import '../services/wbt_price.dart';
 import '../services/soul_service.dart';
 import '../services/storage_service.dart';
 import '../utils/reward_calculator.dart';
@@ -36,13 +35,9 @@ class _SoulHomePageState extends State<SoulHomePage> {
   Map<String, dynamic>? soulData;
   Map<String, String>? futureRewards;
   bool loading = false;
-  double? wbtPrice;
-  final WBTPrice _priceService = WBTPrice();
   final SoulService _soulService = SoulService();
   Timer? _countdownTimer;
   Duration? _timeLeft;
-  Map<String, dynamic>? statsData;
-  bool statsLoading = false;
   DateTime? _lastUpdatedAt;
   String? _lastError;
   int _loadRequest = 0;
@@ -116,17 +111,12 @@ class _SoulHomePageState extends State<SoulHomePage> {
       }
     });
     final client = http.Client();
-    // Attach the error handler immediately, including when Soul loading fails.
-    final priceFuture = _priceService
-        .fetchPrice(client)
-        .catchError((Object _) => null);
     try {
       final data = await _soulService.fetchSoul(soulId, client);
       if (!mounted || request != _loadRequest) return;
       if (data == null) throw Exception('Soul #$soulId was not found');
       soulData = data;
       _loadedSoulId = soulId;
-      wbtPrice = null;
       startCountdown(soulData!['nextRewardStartAt']);
       setState(() {
         final holdAmount =
@@ -151,10 +141,6 @@ class _SoulHomePageState extends State<SoulHomePage> {
         _lastError = null;
         loading = false;
       });
-      // Render rewards first; the optional USD quote can arrive later.
-      final price = await priceFuture;
-      if (!mounted || request != _loadRequest) return;
-      setState(() => wbtPrice = price);
     } catch (e) {
       if (!mounted || request != _loadRequest) return;
       setState(() {
@@ -408,13 +394,7 @@ class _SoulHomePageState extends State<SoulHomePage> {
         titleSpacing: 16,
         title: Align(
           alignment: Alignment.centerRight,
-          child: SoulTopBar(
-            wbtPrice: wbtPrice,
-            statsLoading: statsLoading,
-            onOpenInfo: () => openUrl(AppConstants.whiteStatUrl),
-            onStatsLoaded: (data) => setState(() => statsData = data),
-            onStatsLoading: (v) => setState(() => statsLoading = v),
-          ),
+          child: const SoulTopBar(),
         ),
       ),
       body: SafeArea(
@@ -679,7 +659,6 @@ class _SoulHomePageState extends State<SoulHomePage> {
                             child: SoulCardsList(
                               soulData: soulData!,
                               futureRewards: futureRewards,
-                              wbtPrice: wbtPrice,
                               timeLeft: _timeLeft,
                               tileOrder: _tileOrder,
                             ),

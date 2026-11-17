@@ -13,11 +13,18 @@ class SoulRewardsService {
   // reads live values at one block, including any newly scheduled rate changes.
   final _periodHints = <BigInt, (int, int)>{};
 
-  Future<Map<String, dynamic>> refreshSoul(
-    Map<String, dynamic> soul,
+  Future<BigInt> fetchLastSoulId(http.Client client) async {
+    final values = await _calls(client, 'latest', [
+      (AppConstants.soulRegistryAddress, '31fde6cf'), // lastSoulId()
+    ]);
+    return values.single;
+  }
+
+  Future<Map<String, dynamic>?> refreshSoul(
+    String soulIdText,
     http.Client client,
   ) async {
-    final soulId = BigInt.parse(soul['soulId'].toString());
+    final soulId = BigInt.parse(soulIdText);
     if (soulId <= BigInt.zero || soulId.bitLength > 256) {
       throw const FormatException('Invalid Soul ID');
     }
@@ -55,8 +62,13 @@ class SoulRewardsService {
         AppConstants.soulAttributeRegistryAddress,
         'f58fa64b$idWord$attributeWord', // soulAttributeUpdatedAt(uint256,address)
       ),
+      (AppConstants.soulRegistryAddress, '0d1f6776$idWord'), // isSoul(uint256)
       if (hint != null) _rateCall(hint.$1, hint.$2),
     ]);
+    if (values[4] == BigInt.zero) return null;
+    if (values[4] != BigInt.one) {
+      throw const FormatException('Invalid SoulRegistry response');
+    }
     final available = values[0];
     final claimedAt = values[1].toInt();
     // Solidity bytes20 is left-aligned in its 32-byte ABI return word.
@@ -76,7 +88,7 @@ class SoulRewardsService {
           intervalStart +
           ((now - intervalStart) ~/ _periodSeconds + 1) * _periodSeconds;
       if (hint != null && hint.$1 == level && hint.$2 == nextRewardAt) {
-        percent = values[4];
+        percent = values[5];
       } else {
         final rates = await _calls(client, blockNumber, [
           _rateCall(level, nextRewardAt),
@@ -95,7 +107,7 @@ class SoulRewardsService {
     }
 
     return {
-      ...soul,
+      'soulId': soulIdText,
       'holdAmount': _tokens(hold),
       'holdLevel': level,
       'holdAmountUpdatedAt': _date(holdUpdatedAt),

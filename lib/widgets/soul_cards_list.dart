@@ -15,7 +15,6 @@ class SoulCardsList extends StatelessWidget {
 
   final Map<String, dynamic> soulData;
   final Map<String, String>? futureRewards;
-  final double? wbtPrice;
   final Duration? timeLeft;
   final List<String>? tileOrder;
 
@@ -23,7 +22,6 @@ class SoulCardsList extends StatelessWidget {
     super.key,
     required this.soulData,
     this.futureRewards,
-    this.wbtPrice,
     this.timeLeft,
     this.tileOrder,
   });
@@ -41,9 +39,6 @@ class SoulCardsList extends StatelessWidget {
           soulData['rewardAvailableAmount']?.toString() ?? '0.0',
         ) ??
         0.0;
-    final rewardClaimed =
-        double.tryParse(soulData['rewardClaimedAmount']?.toString() ?? '0.0') ??
-        0.0;
 
     return LayoutBuilder(
       builder: (context, constraints) {
@@ -55,7 +50,7 @@ class SoulCardsList extends StatelessWidget {
             title: 'Current Hold',
             badgeLabel: 'LIVE',
             badgeColor: AppColors.success,
-            content: _MetricBlock(amount: holdAmount, wbtPrice: wbtPrice),
+            content: _AnimatedAmountText(amount: holdAmount),
             trailing: _InfoChip(
               label: '${Formatters.formatPercent(rewardPercent)}%',
               color: AppColors.success,
@@ -67,7 +62,7 @@ class SoulCardsList extends StatelessWidget {
             badgeColor: AppColors.info,
             footer:
                 'Next reward date: ${UrlUtils.formatDate(soulData['nextRewardStartAt'])}',
-            content: _MetricBlock(amount: nextReward, wbtPrice: wbtPrice),
+            content: _AnimatedAmountText(amount: nextReward),
             trailing: _InfoChip(
               label: UrlUtils.formatDuration(timeLeft),
               color: AppColors.info,
@@ -79,13 +74,13 @@ class SoulCardsList extends StatelessWidget {
             badgeColor: rewardAvailable > 0
                 ? AppColors.secondary
                 : AppColors.textMuted,
-            content: _MetricBlock(amount: rewardAvailable, wbtPrice: wbtPrice),
+            content: _AnimatedAmountText(amount: rewardAvailable),
           ),
           'claimed': SoulCard(
             title: 'Claimed',
             badgeLabel: 'TOTAL',
-            badgeColor: AppColors.primary,
-            content: _MetricBlock(amount: rewardClaimed, wbtPrice: wbtPrice),
+            badgeColor: AppColors.textMuted,
+            content: const Text('Full claim history unavailable'),
           ),
         };
 
@@ -114,10 +109,7 @@ class SoulCardsList extends StatelessWidget {
             ),
             const SizedBox(height: 10),
             if (futureRewards != null && futureRewards!.isNotEmpty)
-              _ForecastSection(
-                futureRewards: futureRewards!,
-                wbtPrice: wbtPrice,
-              ),
+              _ForecastSection(futureRewards: futureRewards!),
           ],
         );
       },
@@ -127,9 +119,8 @@ class SoulCardsList extends StatelessWidget {
 
 class _ForecastSection extends StatelessWidget {
   final Map<String, String> futureRewards;
-  final double? wbtPrice;
 
-  const _ForecastSection({required this.futureRewards, required this.wbtPrice});
+  const _ForecastSection({required this.futureRewards});
 
   @override
   Widget build(BuildContext context) {
@@ -158,9 +149,6 @@ class _ForecastSection extends StatelessWidget {
           spacing: 8,
           runSpacing: 8,
           children: futureRewards.entries.map((entry) {
-            final amount =
-                double.tryParse(entry.value.replaceAll(' WBT', '')) ?? 0.0;
-            final usd = wbtPrice != null ? amount * wbtPrice! : null;
             return Container(
               padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
               decoration: BoxDecoration(
@@ -169,9 +157,7 @@ class _ForecastSection extends StatelessWidget {
                 border: Border.all(color: AppColors.borderMuted),
               ),
               child: Text(
-                usd == null
-                    ? '${entry.key}: ${Formatters.formatTokens(amount)} WBT'
-                    : '${entry.key}: ${Formatters.formatTokens(amount)} WBT (\$${usd.toStringAsFixed(2)})',
+                '${entry.key}: ${entry.value}',
                 style: const TextStyle(
                   fontSize: 12,
                   color: AppColors.textMuted,
@@ -208,32 +194,6 @@ class _InfoChip extends StatelessWidget {
           color: color,
         ),
       ),
-    );
-  }
-}
-
-class _MetricBlock extends StatelessWidget {
-  final double amount;
-  final double? wbtPrice;
-
-  const _MetricBlock({required this.amount, required this.wbtPrice});
-
-  @override
-  Widget build(BuildContext context) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        _AnimatedAmountText(amount: amount),
-        if (wbtPrice != null)
-          Text(
-            '\$${(amount * wbtPrice!).toStringAsFixed(2)}',
-            style: const TextStyle(
-              fontSize: 11,
-              color: AppColors.textMuted,
-              fontWeight: FontWeight.w500,
-            ),
-          ),
-      ],
     );
   }
 }
