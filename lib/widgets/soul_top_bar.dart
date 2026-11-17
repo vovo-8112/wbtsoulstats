@@ -5,6 +5,7 @@ import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 
 import '../services/soul_service.dart';
+import '../theme/app_colors.dart';
 
 class SoulTopBar extends StatefulWidget {
   const SoulTopBar({super.key});
@@ -42,18 +43,6 @@ class _SoulTopBarState extends State<SoulTopBar> {
       child: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
-          FutureBuilder<double?>(
-            future: _price,
-            builder: (context, snapshot) {
-              final price = snapshot.data;
-              return Text(
-                price == null
-                    ? 'WBT/USDT —'
-                    : 'WBT/USDT ${price.toStringAsFixed(3)}',
-              );
-            },
-          ),
-          const SizedBox(width: 8),
           OutlinedButton.icon(
             icon: const Icon(Icons.query_stats_rounded, size: 16),
             label: const Text('Stats'),
@@ -80,6 +69,42 @@ class _SoulTopBarState extends State<SoulTopBar> {
                 ),
               );
             },
+          ),
+          const SizedBox(width: 8),
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 7),
+            decoration: BoxDecoration(
+              color: AppColors.bgLight,
+              borderRadius: BorderRadius.circular(12),
+              border: Border.all(color: AppColors.borderMuted),
+            ),
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                const Icon(
+                  Icons.show_chart_rounded,
+                  size: 14,
+                  color: AppColors.primary,
+                ),
+                const SizedBox(width: 4),
+                FutureBuilder<double?>(
+                  future: _price,
+                  builder: (context, snapshot) {
+                    final price = snapshot.data;
+                    return Text(
+                      price == null
+                          ? 'WBT/USDT —'
+                          : 'WBT/USDT ${price.toStringAsFixed(2)}',
+                      style: const TextStyle(
+                        fontSize: 13,
+                        fontWeight: FontWeight.w600,
+                        color: AppColors.text,
+                      ),
+                    );
+                  },
+                ),
+              ],
+            ),
           ),
         ],
       ),
