@@ -4,11 +4,13 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 
-import '../services/soul_service.dart';
+import 'soul_stats_dialog.dart';
 import '../theme/app_colors.dart';
 
 class SoulTopBar extends StatefulWidget {
-  const SoulTopBar({super.key});
+  const SoulTopBar({super.key, this.soulId});
+
+  final String? soulId;
 
   @override
   State<SoulTopBar> createState() => _SoulTopBarState();
@@ -27,15 +29,6 @@ class _SoulTopBarState extends State<SoulTopBar> {
     return (data['price'] as num?)?.toDouble();
   }
 
-  Future<BigInt> _fetchLastSoulId() async {
-    final client = http.Client();
-    try {
-      return await SoulService().fetchLastSoulId(client);
-    } finally {
-      client.close();
-    }
-  }
-
   @override
   Widget build(BuildContext context) {
     return FittedBox(
@@ -47,26 +40,9 @@ class _SoulTopBarState extends State<SoulTopBar> {
             icon: const Icon(Icons.query_stats_rounded, size: 16),
             label: const Text('Stats'),
             onPressed: () {
-              final lastSoulId = _fetchLastSoulId();
               showDialog<void>(
                 context: context,
-                builder: (context) => AlertDialog(
-                  title: const Text('Whitechain Stats'),
-                  content: FutureBuilder<BigInt>(
-                    future: lastSoulId,
-                    builder: (context, snapshot) {
-                      if (snapshot.hasError) {
-                        return const Text('Unable to load Whitechain stats.');
-                      }
-                      if (!snapshot.hasData) {
-                        return const LinearProgressIndicator();
-                      }
-                      return Text(
-                        'Latest registered Soul ID: ${snapshot.data}',
-                      );
-                    },
-                  ),
-                ),
+                builder: (_) => SoulStatsDialog(initialSoulId: widget.soulId),
               );
             },
           ),

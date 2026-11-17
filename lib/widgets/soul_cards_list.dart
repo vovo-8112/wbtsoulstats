@@ -28,6 +28,7 @@ class SoulCardsList extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final claimed = soulData['rewardClaimedAmount'] as double?;
     final holdAmount =
         double.tryParse(soulData['holdAmount'].toString()) ?? 0.0;
     final rewardPercent =
@@ -79,8 +80,12 @@ class SoulCardsList extends StatelessWidget {
           'claimed': SoulCard(
             title: 'Claimed',
             badgeLabel: 'TOTAL',
-            badgeColor: AppColors.textMuted,
-            content: const Text('Full claim history unavailable'),
+            badgeColor: claimed == null
+                ? AppColors.textMuted
+                : AppColors.primary,
+            content: claimed == null
+                ? const Text('Claimed total unavailable')
+                : _AnimatedAmountText(amount: claimed),
           ),
         };
 

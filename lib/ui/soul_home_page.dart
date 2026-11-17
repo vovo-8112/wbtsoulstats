@@ -1,3 +1,4 @@
+import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/services.dart';
@@ -97,6 +98,21 @@ class _SoulHomePageState extends State<SoulHomePage> {
     }
   }
 
+  Future<double?> _fetchClaimedTotal(String soulId) async {
+    final base = kIsWeb ? Uri.base : Uri.https('wbtsoulstats.pages.dev');
+    final uri = base
+        .resolve('/api/soul-claimed')
+        .replace(queryParameters: {'soulId': BigInt.parse(soulId).toString()});
+    try {
+      final response = await http.get(uri).timeout(const Duration(seconds: 9));
+      if (response.statusCode != 200) return null;
+      final data = jsonDecode(response.body) as Map<String, dynamic>;
+      return (data['claimed'] as num?)?.toDouble();
+    } catch (_) {
+      return null;
+    }
+  }
+
   Future<void> fetchSoulData(String soulId) async {
     final request = ++_loadRequest;
     setState(() {
@@ -141,6 +157,9 @@ class _SoulHomePageState extends State<SoulHomePage> {
         _lastError = null;
         loading = false;
       });
+      final claimed = await _fetchClaimedTotal(soulId);
+      if (!mounted || request != _loadRequest || claimed == null) return;
+      setState(() => data['rewardClaimedAmount'] = claimed);
     } catch (e) {
       if (!mounted || request != _loadRequest) return;
       setState(() {
@@ -394,7 +413,7 @@ class _SoulHomePageState extends State<SoulHomePage> {
         titleSpacing: 16,
         title: Align(
           alignment: Alignment.centerRight,
-          child: const SoulTopBar(),
+          child: SoulTopBar(soulId: _loadedSoulId),
         ),
       ),
       body: SafeArea(
